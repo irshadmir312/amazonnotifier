@@ -239,18 +239,27 @@ export default function Home() {
   const handleDownload = useCallback(async () => {
     setDownloading(true)
     try {
-      const res = await fetch('/api/download-extension')
-      if (!res.ok) throw new Error('Download failed')
+      // Try static file first, then API fallback
+      const urls = [
+        '/download/amazon-jobs-monitor.zip',
+        '/api/download-extension',
+      ]
+      let res: Response | null = null
+      for (const url of urls) {
+        res = await fetch(url)
+        if (res.ok) break
+      }
+      if (!res || !res.ok) throw new Error('Download failed')
       const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
+      const objectUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url
-      a.download = 'amazon-jobs-monitor-extension.zip'
+      a.href = objectUrl
+      a.download = 'amazon-jobs-monitor.zip'
       document.body.appendChild(a)
       a.click()
       a.remove()
-      URL.revokeObjectURL(url)
-      toast({ title: 'Download started!', description: 'Extract and load in Chrome.' })
+      URL.revokeObjectURL(objectUrl)
+      toast({ title: 'Download started!', description: 'Extract the ZIP, then load the folder in Chrome.' })
     } catch {
       toast({ title: 'Download failed', description: 'Please try again.', variant: 'destructive' })
     } finally {
