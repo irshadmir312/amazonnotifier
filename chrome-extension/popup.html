@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Amazon Jobs Monitor</title>
+  <title>Amazon Monitor v2</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -11,156 +11,248 @@
     <!-- Header -->
     <header class="header">
       <div class="header-left">
-        <div class="logo">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="24" height="24" rx="6" fill="#FF9900"/>
-            <path d="M7 8L12 5L17 8V13C17 15.5 14.5 17.5 12 18.5C9.5 17.5 7 15.5 7 13V8Z" stroke="white" stroke-width="1.5" fill="none"/>
-            <circle cx="12" cy="12" r="2.5" fill="white"/>
-          </svg>
-        </div>
+        <div class="logo">🛡️</div>
         <div>
-          <h1>Amazon Jobs Monitor</h1>
+          <h1>Amazon Monitor <span class="version">v2</span></h1>
           <span class="status-badge" id="statusBadge">Idle</span>
         </div>
       </div>
-      <button class="icon-btn" id="settingsToggle" title="Settings">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-      </button>
+      <div class="header-actions">
+        <button class="icon-btn" id="testJobBtn" title="Test job alert sound">🔊</button>
+        <button class="icon-btn" id="testShiftBtn" title="Test shift alert sound">🔔</button>
+        <button class="icon-btn" id="settingsToggle" title="Settings">⚙️</button>
+      </div>
     </header>
 
-    <!-- Stats Bar -->
+    <!-- Stats -->
     <div class="stats-bar">
       <div class="stat">
         <span class="stat-value" id="totalFound">0</span>
-        <span class="stat-label">New Jobs Found</span>
+        <span class="stat-label">Total Found</span>
       </div>
       <div class="stat-divider"></div>
       <div class="stat">
-        <span class="stat-value" id="refreshInterval">30s</span>
-        <span class="stat-label">Refresh Interval</span>
+        <span class="stat-value" id="jobInterval">30s</span>
+        <span class="stat-label">Job Refresh</span>
       </div>
       <div class="stat-divider"></div>
       <div class="stat">
-        <span class="stat-value" id="knownCount">0</span>
-        <span class="stat-label">Jobs Tracked</span>
+        <span class="stat-value" id="shiftInterval">60s</span>
+        <span class="stat-label">Shift Refresh</span>
       </div>
     </div>
 
-    <!-- Main Content Area -->
-    <div class="content">
-      <!-- Main View -->
-      <div id="mainView">
-        <!-- Control Buttons -->
-        <div class="controls">
-          <button class="btn btn-primary" id="startBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Start Monitoring
-          </button>
-          <button class="btn btn-danger" id="stopBtn" style="display:none;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
-            Stop Monitoring
-          </button>
-          <button class="btn btn-outline" id="testBtn" title="Test notification">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            Test
-          </button>
-        </div>
+    <!-- Main View -->
+    <div class="content" id="mainView">
+      <!-- Controls -->
+      <div class="controls">
+        <button class="btn btn-primary" id="startBtn">
+          ▶ Start All
+        </button>
+        <button class="btn btn-danger" id="stopBtn" style="display:none;">
+          ⏹ Stop All
+        </button>
+        <button class="btn btn-outline" id="dismissBtn" title="Dismiss alerts">
+          🔇 Mute
+        </button>
+      </div>
 
-        <!-- Recent Jobs -->
-        <div class="section">
-          <div class="section-header">
-            <h2>Recent New Jobs</h2>
-            <button class="text-btn" id="clearLogBtn">Clear</button>
-          </div>
-          <div class="jobs-list" id="jobsList">
-            <div class="empty-state">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-              </svg>
-              <p>No new jobs detected yet</p>
-              <span class="hint">Start monitoring and keep the Amazon Jobs page open</span>
-            </div>
-          </div>
-        </div>
+      <!-- Toggle switches for jobs & shifts -->
+      <div class="monitor-toggles">
+        <label class="monitor-toggle">
+          <input type="checkbox" id="jobsToggle" checked>
+          <span class="toggle-slider"></span>
+          <span class="toggle-label">🟠 Jobs</span>
+        </label>
+        <label class="monitor-toggle">
+          <input type="checkbox" id="shiftsToggle" checked>
+          <span class="toggle-slider"></span>
+          <span class="toggle-label">🟢 Shifts</span>
+        </label>
+      </div>
 
-        <!-- Go to Page Link -->
-        <a href="https://www.jobsatamazon.co.uk/app#/jobSearch" target="_blank" class="visit-link">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Open Amazon Jobs Page
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" data-tab="all">All</button>
+        <button class="tab" data-tab="jobs">Jobs</button>
+        <button class="tab" data-tab="shifts">Shifts</button>
+      </div>
+
+      <!-- Items List -->
+      <div class="items-list" id="itemsList">
+        <div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <p>No new items detected yet</p>
+          <span>Start monitoring and keep Amazon pages open</span>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="quick-links">
+        <a href="https://www.jobsatamazon.co.uk/app#/jobSearch" target="_blank" class="quick-link job">
+          🟠 Open Jobs Page
+        </a>
+        <a href="https://www.jobsatamazon.co.uk/selfservice/schedule/current-schedule/" target="_blank" class="quick-link shift">
+          🟢 Open Shifts Page
         </a>
       </div>
+    </div>
 
-      <!-- Settings View -->
-      <div id="settingsView" style="display:none;">
-        <div class="settings-back">
-          <button class="icon-btn" id="settingsBack" title="Back">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-          </button>
-          <h2>Settings</h2>
-        </div>
-
-        <div class="settings-group">
-          <label class="setting-item">
-            <div class="setting-info">
-              <span class="setting-name">Refresh Interval</span>
-              <span class="setting-desc">How often to check for new jobs</span>
-            </div>
-            <select id="intervalSelect" class="select-input">
-              <option value="15">15 seconds</option>
-              <option value="30" selected>30 seconds</option>
-              <option value="60">1 minute</option>
-              <option value="120">2 minutes</option>
-              <option value="300">5 minutes</option>
-            </select>
-          </label>
-
-          <label class="setting-item">
-            <div class="setting-info">
-              <span class="setting-name">Sound Alert</span>
-              <span class="setting-desc">Play a chime when new jobs are found</span>
-            </div>
-            <div class="toggle-switch">
-              <input type="checkbox" id="soundToggle" checked>
-              <span class="toggle-slider"></span>
-            </div>
-          </label>
-
-          <label class="setting-item">
-            <div class="setting-info">
-              <span class="setting-name">Desktop Notifications</span>
-              <span class="setting-desc">Show system notification popup</span>
-            </div>
-            <div class="toggle-switch">
-              <input type="checkbox" id="notifToggle" checked>
-              <span class="toggle-slider"></span>
-            </div>
-          </label>
-
-          <label class="setting-item">
-            <div class="setting-info">
-              <span class="setting-name">Auto-Start</span>
-              <span class="setting-desc">Start monitoring when browser opens</span>
-            </div>
-            <div class="toggle-switch">
-              <input type="checkbox" id="autoStartToggle" checked>
-              <span class="toggle-slider"></span>
-            </div>
-          </label>
-        </div>
-
-        <button class="btn btn-primary btn-full" id="saveSettingsBtn">Save Settings</button>
+    <!-- Settings View -->
+    <div class="content" id="settingsView" style="display:none;">
+      <div class="settings-back">
+        <button class="icon-btn" id="settingsBack" title="Back">←</button>
+        <h2>Settings</h2>
       </div>
+
+      <div class="settings-section">
+        <h3 class="settings-heading">🔊 Sound Alerts</h3>
+        <label class="setting-item">
+          <span class="setting-name">Sound Enabled</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="soundToggle" checked>
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+        <label class="setting-item">
+          <span class="setting-name">Volume</span>
+          <input type="range" id="volumeRange" min="10" max="100" value="100" class="range-input">
+          <span class="range-value" id="volumeValue">100%</span>
+        </label>
+        <label class="setting-item">
+          <span class="setting-name">Beep Count</span>
+          <select id="beepCount" class="select-input">
+            <option value="3">3 beeps</option>
+            <option value="5" selected>5 beeps</option>
+            <option value="8">8 beeps</option>
+            <option value="10">10 beeps</option>
+            <option value="15">15 beeps (crazy)</option>
+          </select>
+        </label>
+        <label class="setting-item">
+          <span class="setting-name">Beep Speed</span>
+          <select id="beepSpeed" class="select-input">
+            <option value="150">Fast (150ms)</option>
+            <option value="200" selected>Normal (200ms)</option>
+            <option value="350">Slow (350ms)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-heading">🔁 Repeat Alerts</h3>
+        <label class="setting-item">
+          <span class="setting-name">Repeat Sound</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="repeatToggle" checked>
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+        <label class="setting-item">
+          <span class="setting-name">Repeat Every</span>
+          <select id="repeatInterval" class="select-input">
+            <option value="15">15 seconds</option>
+            <option value="30" selected>30 seconds</option>
+            <option value="60">1 minute</option>
+          </select>
+        </label>
+        <label class="setting-item">
+          <span class="setting-name">Max Repeats</span>
+          <select id="maxRepeats" class="select-input">
+            <option value="2">2 times</option>
+            <option value="5" selected>5 times</option>
+            <option value="10">10 times</option>
+            <option value="0">Unlimited</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-heading">⏱ Refresh Intervals</h3>
+        <label class="setting-item">
+          <span class="setting-name">Jobs Page</span>
+          <select id="jobsRefresh" class="select-input">
+            <option value="15">15s</option>
+            <option value="30" selected>30s</option>
+            <option value="60">1 min</option>
+            <option value="120">2 min</option>
+            <option value="300">5 min</option>
+          </select>
+        </label>
+        <label class="setting-item">
+          <span class="setting-name">Shifts Page</span>
+          <select id="shiftsRefresh" class="select-input">
+            <option value="30">30s</option>
+            <option value="60" selected>1 min</option>
+            <option value="120">2 min</option>
+            <option value="300">5 min</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-heading">🔍 Keyword Filter</h3>
+        <div class="setting-item" style="flex-direction:column;align-items:stretch;gap:6px;">
+          <span class="setting-name">Keywords (comma separated)</span>
+          <input type="text" id="keywordFilter" class="text-input" placeholder="engineer, manager, warehouse...">
+        </div>
+        <label class="setting-item">
+          <span class="setting-name">Mode</span>
+          <select id="keywordMode" class="select-input">
+            <option value="include">Only include matches</option>
+            <option value="exclude">Exclude matches</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-heading">🔧 General</h3>
+        <label class="setting-item">
+          <span class="setting-name">Desktop Notifications</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="notifToggle" checked>
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+        <label class="setting-item">
+          <span class="setting-name">Flash Tab Title</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="flashToggle" checked>
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+        <label class="setting-item">
+          <span class="setting-name">Auto-Open Tab</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="autoOpenToggle" checked>
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+        <label class="setting-item">
+          <span class="setting-name">Show Page Overlay</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="overlayToggle" checked>
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+        <label class="setting-item">
+          <span class="setting-name">Auto-Start on Launch</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="autoStartToggle" checked>
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="saveSettingsBtn">💾 Save Settings</button>
+      <button class="btn btn-danger btn-full" id="clearLogBtn" style="margin-top:8px;">🗑 Clear All History</button>
     </div>
 
     <!-- Footer -->
     <footer class="footer">
-      <span>v1.0.0</span>
+      <span>v2.0.0</span>
       <span class="dot"></span>
-      <span id="lastCheck">Not checked yet</span>
+      <span id="lastCheck">Ready</span>
     </footer>
   </div>
 

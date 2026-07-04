@@ -1,81 +1,79 @@
-# Amazon Jobs Monitor - Worklog
+# Amazon Jobs & Shifts Monitor - Worklog
 
 ## Project Overview
-Chrome extension that monitors Amazon UK jobs page (jobsatamazon.co.uk) and notifies users when new job postings are detected. Includes a Next.js landing page for the extension.
+Chrome extension (v2) that monitors Amazon UK **jobs page** AND **shift/schedule pages**. Notifies with loud multi-beep BIP BIP sounds, desktop notifications, tab flashing, and more. Includes a Next.js landing page.
 
 ---
 
-## Current Project Status / Assessment
+## v2.0 Upgrade — What's New
 
-### Completed Deliverables
+### 🔊 Sound System (MAJOR UPGRADE)
+- **Loud multi-beep BIP BIP**: Uses square wave oscillator at 1200-1600Hz — much louder and more piercing than v1
+- **Separate sounds**: Jobs = urgent high-pitched beeps, Shifts = deeper triangle wave beeps
+- **Configurable volume**: 10%–100% slider
+- **Configurable beep count**: 3, 5, 8, 10, or 15 beeps
+- **Configurable speed**: Fast (150ms), Normal (200ms), Slow (350ms)
+- **Repeat alerts**: Sound repeats every 15s/30s/60s up to N times
 
-1. **Chrome Extension** (fully functional, ready to install)
-   - `chrome-extension/manifest.json` — Manifest V3 configuration
-   - `chrome-extension/background.js` — Service worker with alarm-based refresh timer, job comparison logic, notification system
-   - `chrome-extension/content.js` — DOM scraper with multiple detection strategies, Web Audio API chime player, MutationObserver for SPA support
-   - `chrome-extension/popup.html` — Extension popup UI with status, stats, job list, and settings
-   - `chrome-extension/popup.css` — Polished popup styling with Amazon orange theme
-   - `chrome-extension/popup.js` — Popup logic with live status updates, settings management
-   - `chrome-extension/icons/` — PNG icons (16, 48, 128px) generated with sharp
+### 🟢 Shift/Schedule Monitoring (NEW)
+- Monitors `jobsatamazon.co.uk/selfservice/schedule/current-schedule/*` URLs
+- Detects shift cards, schedule entries, time slots
+- Separate refresh interval (default 60s, independent from jobs)
+- Separate toggle in popup
 
-2. **Next.js Landing Page** (`src/app/page.tsx`)
-   - Hero section with gradient text and browser mockup
-   - 6 feature cards (Auto Refresh, Sound Alerts, Desktop Notifications, Job Tracking, Smart Detection, Easy Settings)
-   - 3-step "How It Works" section
-   - 6-step installation guide
-   - FAQ accordion (6 questions)
-   - CTA banner and sticky footer
-   - Framer Motion animations
-   - Amazon orange (#FF9900) accent color scheme
-   - Fully responsive (mobile-first)
+### 🔔 More Alert Features (NEW)
+- **Tab title flashing**: Browser tab title alternates between "🟠 2 NEW JOBS" and normal for 60s
+- **Persistent red badge**: Shows undismissed count on extension icon
+- **Repeat sound**: Keeps beeping until you dismiss
+- **Mute button**: One-click dismiss all alerts
 
-3. **Download API** (`src/app/api/download-extension/route.ts`)
-   - Packages all extension files into a ZIP
-   - Custom ZIP implementation (no external dependencies)
-   - CRC32 checksums for file integrity
-   - Serves as .zip download
+### 📋 Popup v2 Redesign
+- **Tab filtering**: All / Jobs / Shifts tabs
+- **Color-coded cards**: Orange border for jobs, green for shifts
+- **Monitor toggles**: Enable/disable jobs and shifts independently
+- **Test sound buttons**: Test job alert 🔊 and shift alert 🔔
+- **Quick links**: Direct links to Jobs page and Shifts page
 
-### Technical Decisions
-- Used Web Audio API in content script for sound (no external audio files needed)
-- Multi-strategy job detection (CSS selectors, heuristics, JSON data parsing) for robustness
-- Chrome storage API for persistence (no external servers needed)
-- Minimal ZIP creator to avoid adding dependencies
+### 🔍 Keyword Filtering (NEW)
+- Include mode: Only alert for jobs matching keywords
+- Exclude mode: Ignore jobs containing keywords
+- Comma-separated keyword list
 
-### Known Sandbox Limitation
-- The sandbox environment has network namespace isolation that prevents child Node.js processes from accepting inbound connections on port 3000
-- Caddy proxy (port 81) cannot reach locally-started backend servers
-- This is a sandbox infrastructure issue, not a code issue
-- The Next.js app builds successfully (`npx next build` completes without errors)
-- All code passes ESLint checks
-- In a normal deployment environment, the landing page and download API would work correctly
+### 🖥 Page Overlay (NEW)
+- Dark status bar overlay on Amazon pages showing "Monitoring Active"
+- New item count badge (orange for jobs, green for shifts)
+- Slide-in alert panel showing detected items
+- Auto-dismisses after 30 seconds
 
----
-
-## Current Goals / Completed Modifications
-
-- [x] Chrome extension with auto-refresh, sound alerts, desktop notifications
-- [x] Extension popup with monitoring controls, job log, and settings panel
-- [x] Smart job detection with multiple DOM scraping strategies
-- [x] Landing page with professional design
-- [x] ZIP download API for the extension
-- [x] All code linting clean
-- [x] TypeScript compilation successful
-
-## Verification Results
-- `bun run lint` — ✅ 0 errors, 0 warnings
-- `npx next build` — ✅ Compiled successfully, all routes generated
-- `npx tsc --noEmit` — ✅ No errors in project source files (only pre-existing example files have minor issues)
+### ⚙️ More Settings
+- Volume control (slider)
+- Beep count (3/5/8/10/15)
+- Beep speed (fast/normal/slow)
+- Repeat alerts toggle + interval + max repeats
+- Separate refresh intervals for jobs and shifts
+- Tab flashing toggle
+- Auto-open tab toggle
+- Page overlay toggle
+- Keyword filter input + mode selector
 
 ---
 
-## Unresolved Issues / Risks
+## Files (10 files in chrome-extension/)
 
-1. **Sandbox Network Isolation** — Cannot verify the landing page visually in the sandbox. The Next.js server process gets terminated by the sandbox's process manager. This is NOT a code bug.
+| File | Size | Purpose |
+|------|------|---------|
+| manifest.json | 972B | Manifest V3 — added `scripting` permission, `overlay.css` content style |
+| background.js | 14.7KB | Service worker — dual alarm system, tab flashing, repeat alerts, keyword filter, shift monitoring |
+| content.js | 13.7KB | DOM scraper — jobs + shifts, square wave BIP BIP engine, page overlay |
+| overlay.css | 3.3KB | Page overlay styles — status bar, alert panel, animations |
+| popup.html | 9.8KB | Redesigned popup — tabs, toggles, full settings panel |
+| popup.css | 8.7KB | Dark header, monitor toggles, item cards, settings sections |
+| popup.js | 8KB | Tab filtering, settings management, live updates |
+| icons/icon16.png | 549B | Extension icon |
+| icons/icon48.png | 1.6KB | Extension icon |
+| icons/icon128.png | 4.2KB | Extension icon |
 
-2. **Priority Recommendations for Next Phase:**
-   - Deploy to a proper hosting environment to verify the landing page
-   - Test the Chrome extension on the actual Amazon UK jobs page
-   - Add email notification support (would need a backend service)
-   - Add support for other Amazon jobs regions (US, EU, etc.)
-   - Consider publishing to Chrome Web Store
-   - Add more sophisticated job matching (keyword filters, exclude patterns)
+## Verification
+- `bun run lint` — ✅ 0 errors
+- ZIP extraction — ✅ All 10 files, manifest.json valid JSON
+- manifest.json — ✅ Valid Manifest V3, all permissions present

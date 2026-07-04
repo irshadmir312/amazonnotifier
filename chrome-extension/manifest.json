@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "Amazon Jobs Monitor",
-  "version": "1.0.0",
-  "description": "Auto-refreshes Amazon UK jobs page and notifies you when new positions are posted with sound alerts and desktop notifications.",
+  "name": "Amazon Jobs & Shifts Monitor",
+  "version": "2.0.0",
+  "description": "Auto-monitors Amazon UK jobs AND shift schedules. Loud multi-beep alerts, desktop notifications, keyword filtering, tab flashing, and more.",
   "permissions": [
     "alarms",
     "notifications",
     "activeTab",
     "storage",
-    "tabs"
+    "tabs",
+    "scripting"
   ],
   "host_permissions": [
     "https://www.jobsatamazon.co.uk/*"
@@ -20,6 +21,7 @@
     {
       "matches": ["https://www.jobsatamazon.co.uk/*"],
       "js": ["content.js"],
+      "css": ["overlay.css"],
       "run_at": "document_idle"
     }
   ],

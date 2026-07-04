@@ -1,191 +1,236 @@
-// Amazon Jobs Monitor - Popup Script
-
+// Amazon Monitor v2 — Popup Script
 document.addEventListener('DOMContentLoaded', () => {
-  const statusBadge = document.getElementById('statusBadge');
-  const totalFoundEl = document.getElementById('totalFound');
-  const refreshIntervalEl = document.getElementById('refreshInterval');
-  const knownCountEl = document.getElementById('knownCount');
-  const startBtn = document.getElementById('startBtn');
-  const stopBtn = document.getElementById('stopBtn');
-  const testBtn = document.getElementById('testBtn');
-  const clearLogBtn = document.getElementById('clearLogBtn');
-  const jobsList = document.getElementById('jobsList');
-  const lastCheckEl = document.getElementById('lastCheck');
+  const $ = id => document.getElementById(id);
 
-  // Settings elements
-  const settingsToggle = document.getElementById('settingsToggle');
-  const settingsView = document.getElementById('settingsView');
-  const mainView = document.getElementById('mainView');
-  const settingsBack = document.getElementById('settingsBack');
-  const intervalSelect = document.getElementById('intervalSelect');
-  const soundToggle = document.getElementById('soundToggle');
-  const notifToggle = document.getElementById('notifToggle');
-  const autoStartToggle = document.getElementById('autoStartToggle');
-  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+  // Elements
+  const statusBadge = $('statusBadge');
+  const totalFoundEl = $('totalFound');
+  const jobIntervalEl = $('jobInterval');
+  const shiftIntervalEl = $('shiftInterval');
+  const startBtn = $('startBtn');
+  const stopBtn = $('stopBtn');
+  const dismissBtn = $('dismissBtn');
+  const itemsList = $('itemsList');
+  const mainView = $('mainView');
+  const settingsView = $('settingsView');
+  const lastCheckEl = $('lastCheck');
 
   let currentData = null;
+  let activeFilter = 'all';
 
-  // Load status
+  // ─── LOAD STATUS ───
   function loadStatus() {
-    chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (response) => {
-      if (chrome.runtime.lastError) {
-        console.error('Error getting status:', chrome.runtime.lastError);
-        return;
-      }
-      if (!response) return;
-
-      currentData = response;
-      updateUI(response);
+    chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
+      if (chrome.runtime.lastError || !res) return;
+      currentData = res;
+      updateUI(res);
     });
   }
 
   function updateUI(data) {
-    const { settings, status, totalFound, recentJobs } = data;
+    const { settings, status, totalFound, recentItems } = data;
 
-    // Status badge
     statusBadge.textContent = status === 'monitoring' ? '● Monitoring' : status === 'stopped' ? 'Stopped' : 'Idle';
     statusBadge.className = 'status-badge ' + (status === 'monitoring' ? 'monitoring' : 'stopped');
 
-    // Stats
     totalFoundEl.textContent = totalFound;
-    refreshIntervalEl.textContent = formatInterval(settings.refreshInterval);
-    knownCountEl.textContent = recentJobs ? '—' : '0';
+    jobIntervalEl.textContent = fmtInterval(settings.jobsRefreshInterval);
+    shiftIntervalEl.textContent = fmtInterval(settings.shiftsRefreshInterval);
 
-    // Buttons
     startBtn.style.display = status === 'monitoring' ? 'none' : 'inline-flex';
     stopBtn.style.display = status === 'monitoring' ? 'inline-flex' : 'none';
 
-    // Jobs list
-    if (recentJobs && recentJobs.length > 0) {
-      jobsList.innerHTML = recentJobs.map((job, i) => `
-        <a href="${job.url}" target="_blank" class="job-item ${i === 0 ? 'new' : ''}">
-          <div class="job-icon">📦</div>
-          <div class="job-info">
-            <div class="job-title">${escapeHtml(job.title)}</div>
-            <div class="job-meta">
-              <span>${escapeHtml(job.location)}</span>
-              ${job.company ? `<span>· ${escapeHtml(job.company)}</span>` : ''}
-            </div>
-          </div>
-          <span class="job-time">${formatTime(job.foundAt)}</span>
-        </a>
-      `).join('');
-    } else {
-      jobsList.innerHTML = `
+    // Toggles
+    $('jobsToggle').checked = settings.jobsEnabled;
+    $('shiftsToggle').checked = settings.shiftsEnabled;
+
+    // Items list
+    renderItems(recentItems || []);
+
+    if (recentItems && recentItems.length > 0) {
+      lastCheckEl.textContent = 'Last: ' + fmtTime(recentItems[0].foundAt);
+    }
+  }
+
+  function renderItems(items) {
+    let filtered = items;
+    if (activeFilter !== 'all') {
+      filtered = items.filter(i => i.pageType === activeFilter);
+    }
+
+    if (filtered.length === 0) {
+      itemsList.innerHTML = `
         <div class="empty-state">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
-            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-          </svg>
-          <p>No new jobs detected yet</p>
-          <span class="hint">Start monitoring and keep the Amazon Jobs page open</span>
+          <div class="empty-icon">🔍</div>
+          <p>${activeFilter === 'all' ? 'No new items' : `No new ${activeFilter}`}</p>
+          <span>Start monitoring and keep Amazon pages open</span>
+        </div>`;
+      return;
+    }
+
+    itemsList.innerHTML = filtered.map(item => `
+      <a href="${item.url}" target="_blank" class="item-card ${item.pageType || 'job'}">
+        <span class="item-type">${item.pageType === 'shifts' ? 'SHIFT' : 'JOB'}</span>
+        <div class="item-info">
+          <div class="item-title">${esc(item.title)}</div>
+          <div class="item-meta">
+            ${esc(item.location)}
+            ${item.company ? ` · ${esc(item.company)}` : ''}
+          </div>
         </div>
-      `;
-    }
-
-    // Last check time
-    if (recentJobs && recentJobs.length > 0) {
-      lastCheckEl.textContent = 'Last found: ' + formatTime(recentJobs[0].foundAt);
-    }
+        <span class="item-time">${fmtTime(item.foundAt)}</span>
+      </a>
+    `).join('');
   }
 
-  function formatInterval(seconds) {
-    if (seconds < 60) return seconds + 's';
-    if (seconds < 120) return '1 min';
-    return Math.floor(seconds / 60) + ' min';
-  }
-
-  function formatTime(isoString) {
-    if (!isoString) return '';
-    const date = new Date(isoString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMin = Math.floor(diffMs / 60000);
-
-    if (diffMin < 1) return 'Just now';
-    if (diffMin < 60) return diffMin + 'm ago';
-    if (diffMin < 1440) return Math.floor(diffMin / 60) + 'h ago';
-    return date.toLocaleDateString();
-  }
-
-  function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  // Event Listeners
-  startBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'START_MONITORING' }, () => {
-      setTimeout(loadStatus, 500);
+  // ─── TABS ───
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeFilter = tab.dataset.tab;
+      if (currentData) renderItems(currentData.recentItems || []);
     });
+  });
+
+  // ─── CONTROLS ───
+  startBtn.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'START_MONITORING' }, () => setTimeout(loadStatus, 500));
   });
 
   stopBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'STOP_MONITORING' }, () => {
-      setTimeout(loadStatus, 300);
-    });
+    chrome.runtime.sendMessage({ type: 'STOP_MONITORING' }, () => setTimeout(loadStatus, 300));
   });
 
-  testBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'TEST_NOTIFICATION' }, () => {
-      // Brief visual feedback
-      testBtn.textContent = '✓ Sent!';
-      testBtn.style.color = '#22c55e';
-      setTimeout(() => {
-        testBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Test`;
-        testBtn.style.color = '';
-      }, 1500);
-    });
+  dismissBtn.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'DISMISS_ALERTS' });
+    dismissBtn.textContent = '✅ Muted';
+    setTimeout(() => dismissBtn.textContent = '🔇 Mute', 1500);
   });
 
-  clearLogBtn.addEventListener('click', () => {
-    if (confirm('Clear all detected jobs history?')) {
-      chrome.runtime.sendMessage({ type: 'CLEAR_LOG' }, () => {
-        setTimeout(loadStatus, 300);
+  // Monitor toggles
+  $('jobsToggle').addEventListener('change', (e) => {
+    if (currentData) {
+      chrome.runtime.sendMessage({
+        type: 'UPDATE_SETTINGS',
+        settings: { jobsEnabled: e.target.checked }
       });
     }
   });
 
-  // Settings navigation
-  settingsToggle.addEventListener('click', () => {
-    mainView.style.display = 'none';
-    settingsView.style.display = 'block';
-
-    // Populate settings
+  $('shiftsToggle').addEventListener('change', (e) => {
     if (currentData) {
-      intervalSelect.value = currentData.settings.refreshInterval;
-      soundToggle.checked = currentData.settings.soundEnabled;
-      notifToggle.checked = currentData.settings.desktopNotifications;
-      autoStartToggle.checked = currentData.settings.autoStart;
+      chrome.runtime.sendMessage({
+        type: 'UPDATE_SETTINGS',
+        settings: { shiftsEnabled: e.target.checked }
+      });
     }
   });
 
-  settingsBack.addEventListener('click', () => {
+  // Test sounds
+  $('testJobBtn').addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'TEST_SOUND', soundType: 'job' });
+  });
+
+  $('testShiftBtn').addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'TEST_SOUND', soundType: 'shift' });
+  });
+
+  // ─── SETTINGS NAVIGATION ───
+  $('settingsToggle').addEventListener('click', () => {
+    mainView.style.display = 'none';
+    settingsView.style.display = 'block';
+    populateSettings();
+  });
+
+  $('settingsBack').addEventListener('click', () => {
     settingsView.style.display = 'none';
     mainView.style.display = 'block';
   });
 
-  saveSettingsBtn.addEventListener('click', () => {
+  function populateSettings() {
+    if (!currentData) return;
+    const s = currentData.settings;
+    $('soundToggle').checked = s.soundEnabled;
+    $('volumeRange').value = s.volume;
+    $('volumeValue').textContent = s.volume + '%';
+    $('beepCount').value = s.beepCount;
+    $('beepSpeed').value = s.beepSpeed;
+    $('repeatToggle').checked = s.repeatAlerts;
+    $('repeatInterval').value = s.repeatIntervalSeconds;
+    $('maxRepeats').value = s.maxRepeats;
+    $('jobsRefresh').value = s.jobsRefreshInterval;
+    $('shiftsRefresh').value = s.shiftsRefreshInterval;
+    $('keywordFilter').value = s.keywordFilter || '';
+    $('keywordMode').value = s.keywordMode || 'include';
+    $('notifToggle').checked = s.desktopNotifications;
+    $('flashToggle').checked = s.tabFlashing;
+    $('autoOpenToggle').checked = s.autoOpenTab;
+    $('overlayToggle').checked = s.showOverlay;
+    $('autoStartToggle').checked = s.autoStart;
+  }
+
+  $('volumeRange').addEventListener('input', (e) => {
+    $('volumeValue').textContent = e.target.value + '%';
+  });
+
+  $('saveSettingsBtn').addEventListener('click', () => {
     const newSettings = {
-      refreshInterval: parseInt(intervalSelect.value),
-      soundEnabled: soundToggle.checked,
-      desktopNotifications: notifToggle.checked,
-      autoStart: autoStartToggle.checked,
+      soundEnabled: $('soundToggle').checked,
+      volume: parseInt($('volumeRange').value),
+      beepCount: parseInt($('beepCount').value),
+      beepSpeed: parseInt($('beepSpeed').value),
+      repeatAlerts: $('repeatToggle').checked,
+      repeatIntervalSeconds: parseInt($('repeatInterval').value),
+      maxRepeats: parseInt($('maxRepeats').value),
+      jobsRefreshInterval: parseInt($('jobsRefresh').value),
+      shiftsRefreshInterval: parseInt($('shiftsRefresh').value),
+      keywordFilter: $('keywordFilter').value,
+      keywordMode: $('keywordMode').value,
+      desktopNotifications: $('notifToggle').checked,
+      tabFlashing: $('flashToggle').checked,
+      autoOpenTab: $('autoOpenToggle').checked,
+      showOverlay: $('overlayToggle').checked,
+      autoStart: $('autoStartToggle').checked,
     };
 
     chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings: newSettings }, () => {
-      // Go back to main view
       settingsView.style.display = 'none';
       mainView.style.display = 'block';
       setTimeout(loadStatus, 300);
     });
   });
 
-  // Initial load
-  loadStatus();
+  $('clearLogBtn').addEventListener('click', () => {
+    if (confirm('Clear all detection history?')) {
+      chrome.runtime.sendMessage({ type: 'CLEAR_LOG' }, () => setTimeout(loadStatus, 300));
+    }
+  });
 
-  // Refresh every 2 seconds while popup is open
+  // ─── HELPERS ───
+  function fmtInterval(s) {
+    if (s < 60) return s + 's';
+    return Math.floor(s / 60) + 'm';
+  }
+
+  function fmtTime(iso) {
+    if (!iso) return '';
+    const d = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(d / 60000);
+    if (m < 1) return 'now';
+    if (m < 60) return m + 'm';
+    if (m < 1440) return Math.floor(m / 60) + 'h';
+    return new Date(iso).toLocaleDateString();
+  }
+
+  function esc(t) {
+    if (!t) return '';
+    const d = document.createElement('div');
+    d.textContent = t;
+    return d.innerHTML;
+  }
+
+  // ─── INIT ───
+  loadStatus();
   setInterval(loadStatus, 2000);
 });
