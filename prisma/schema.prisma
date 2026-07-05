@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,20 +7,58 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+model Subscription {
   id        String   @id @default(cuid())
   email     String   @unique
-  name      String?
+  active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  notifications NotificationLog[]
 }
 
-model Post {
+model DetectedJob {
+  id            String   @id @default(cuid())
+  externalId    String   @unique
+  title         String
+  location      String?
+  department    String?
+  jobType       String?
+  noCvRequired  Boolean  @default(false)
+  url           String
+  company       String   @default("Amazon UK")
+  description   String?
+  aiAnalysis    String?
+  isRelevant    Boolean  @default(false)
+  notifiedAt    DateTime?
+  detectedAt    DateTime @default(now())
+}
+
+model ScanLog {
+  id           String   @id @default(cuid())
+  status       String
+  totalJobs    Int      @default(0)
+  newJobs      Int      @default(0)
+  relevantJobs Int      @default(0)
+  errorMessage String?
+  durationMs   Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+model NotificationLog {
+  id             String       @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  jobId          String?
+  type           String
+  status         String
+  errorMessage   String?
+  createdAt      DateTime @default(now())
+}
+
+model AppSettings {
   id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
+  key       String   @unique
+  value     String
   updatedAt DateTime @updatedAt
 }

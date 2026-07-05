@@ -1,17 +1,15 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/hooks/use-toast'
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Accordion,
   AccordionContent,
@@ -19,406 +17,525 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import {
-  Download,
-  RefreshCw,
-  Volume2,
-  Bell,
-  ClipboardList,
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+} from '@/components/ui/sheet'
+import {
   BrainCircuit,
-  Settings,
-  Shield,
   Zap,
-  ArrowRight,
-  Chrome,
-  ExternalLink,
-  Package,
+  Mail,
+  Target,
+  Shield,
+  BarChart3,
   Loader2,
+  ArrowRight,
+  Menu,
+  Clock,
+  Package,
+  Search,
+  Users,
   CheckCircle2,
-  MousePointerClick,
-  Eye,
-  Copy,
-  ChevronRight,
+  ExternalLink,
+  MapPin,
+  Sparkles,
 } from 'lucide-react'
 
+/* ─── Animation Variants ─── */
 const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+}
+
+const fadeIn = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.5 } },
 }
 
 const staggerContainer = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.1 } },
+  visible: { transition: { staggerChildren: 0.12 } },
 }
 
-interface Feature {
-  icon: React.ElementType
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.9 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'easeOut' } },
+}
+
+/* ─── Types ─── */
+interface Stats {
+  totalScans: number
+  jobsDetected: number
+  relevantJobs: number
+  activeSubscribers: number
+  lastScanAt: string | null
+  nextScanIn: number | null
+}
+
+interface Job {
+  id: string
   title: string
-  description: string
+  location: string
+  detectedAt: string
+  url?: string
 }
 
-const features: Feature[] = [
+/* ─── Data ─── */
+const navLinks = [
+  { label: 'How It Works', href: '#how-it-works' },
+  { label: 'Features', href: '#features' },
+  { label: 'Live Stats', href: '#stats' },
+  { label: 'FAQ', href: '#faq' },
+]
+
+const howItWorksSteps = [
   {
-    icon: RefreshCw,
-    title: 'Auto Refresh',
-    description:
-      'Automatically refreshes the Amazon Jobs page at a configurable interval (default 30s) so you never have to manually reload.',
+    number: '01',
+    icon: Mail,
+    title: 'Subscribe with Email',
+    description: 'Just enter your email, no signup needed. No passwords, no accounts — just your email address.',
   },
   {
-    icon: Volume2,
-    title: 'Sound Alerts',
-    description:
-      'Plays a pleasant chime notification the moment a new job is detected, so you can react instantly even when the tab is in the background.',
+    number: '02',
+    icon: Search,
+    title: 'AI Scans Amazon Jobs',
+    description: 'Every 5 minutes, our AI checks Amazon UK for new hourly positions using intelligent web scraping.',
   },
   {
-    icon: Bell,
-    title: 'Desktop Notifications',
-    description:
-      'Sends native system-level notification popups so you are alerted even when Chrome is minimized.',
+    number: '03',
+    icon: Sparkles,
+    title: 'Get Instant Alerts',
+    description: 'Receive a beautifully formatted email the moment a matching job is found, with a direct apply link.',
   },
-  {
-    icon: ClipboardList,
-    title: 'Job Tracking',
-    description:
-      'Maintains a full log of every newly detected job with title, location, and timestamp.',
-  },
+]
+
+const features = [
   {
     icon: BrainCircuit,
-    title: 'Smart Detection',
-    description:
-      'Intelligently compares page state before and after refresh to identify genuinely new postings.',
+    title: 'AI-Powered Filtering',
+    description: 'Uses GPT/DeepSeek to intelligently filter for hourly jobs that don\'t require CVs — no false positives.',
   },
   {
-    icon: Settings,
-    title: 'Easy Settings',
-    description:
-      'Configure refresh interval, toggle sound/notifications, and manage everything from a clean popup.',
-  },
-]
-
-const steps = [
-  {
-    number: 1,
-    title: 'Download & Install',
-    description:
-      'Click the download button, unzip, and load the extension as an unpacked extension in Chrome.',
+    icon: Zap,
+    title: '5-Minute Scanning',
+    description: 'Server-side cron checks Amazon jobs every 5 minutes automatically, 24/7 — even while you sleep.',
   },
   {
-    number: 2,
-    title: 'Open Amazon Jobs',
-    description:
-      'Navigate to the Amazon UK jobs page and keep the tab open in the background.',
+    icon: Mail,
+    title: 'Instant Email Alerts',
+    description: 'Beautiful email notifications with direct apply links the moment a job matches your criteria.',
   },
   {
-    number: 3,
-    title: 'Get Notified Instantly',
-    description:
-      'The extension monitors the page every 30 seconds and alerts you with sound + notification.',
-  },
-]
-
-const installSteps = [
-  { step: 1, text: 'Download the extension ZIP file by clicking the button above.' },
-  { step: 2, text: 'Extract the ZIP to a folder on your computer.' },
-  { step: 3, text: 'Open Chrome and navigate to the extensions page.' },
-  {
-    step: 4,
-    text: 'Enable "Developer mode" using the toggle in the top-right corner.',
+    icon: Target,
+    title: 'Smart Targeting',
+    description: 'Only data warehouse, fulfillment, and logistics hourly roles — no office or corporate jobs.',
   },
   {
-    step: 5,
-    text: 'Click "Load unpacked" and select the extracted folder.',
+    icon: Shield,
+    title: 'Privacy First',
+    description: 'Just your email, nothing else. No passwords, no accounts, no tracking. Unsubscribe anytime.',
   },
   {
-    step: 6,
-    text: 'The extension icon appears in your toolbar — click it to start monitoring!',
+    icon: BarChart3,
+    title: 'Live Dashboard',
+    description: 'Real-time stats showing scans, jobs found, and system health — full transparency.',
   },
 ]
 
 const faqs = [
   {
-    question: 'Does this extension work on Amazon job sites other than the UK?',
+    question: 'How does this work?',
     answer:
-      'Currently, the extension is optimized for jobsatamazon.co.uk. However, the detection logic uses generic heuristics that may work on other Amazon jobs sites. You can try it on any Amazon jobs page.',
+      'We run a server-side monitor that scrapes Amazon UK\'s jobs page every 5 minutes. When a new hourly job is found, our AI analyzes it to confirm it doesn\'t require a CV. If it matches, we immediately send you an email with the job details and a direct apply link.',
   },
   {
-    question: 'Will refreshing the page log me out?',
+    question: 'What jobs will I be notified about?',
     answer:
-      'The extension refreshes the tab which may require you to be logged in. Make sure you stay logged in to the Amazon jobs site. Most job search pages do not require authentication.',
+      'You\'ll only receive alerts for hourly-paid Amazon UK jobs that don\'t require a CV. This includes warehouse operatives, fulfillment center associates, delivery drivers, sorting center staff, and similar logistics roles.',
   },
   {
-    question: 'Can I customize the refresh interval?',
+    question: 'How often does it scan?',
     answer:
-      'Yes! Open the extension popup, click the settings icon, and choose from 15 seconds, 30 seconds, 1 minute, 2 minutes, or 5 minutes. The default is 30 seconds.',
+      'Our system scans Amazon UK jobs every 5 minutes, 24 hours a day, 7 days a week. This ensures you\'re among the first to know when a new position opens up.',
   },
   {
-    question: 'Does it consume a lot of memory or CPU?',
+    question: 'Is it free?',
     answer:
-      'No. The extension is very lightweight — it only runs a simple timer in the background and scrapes the page DOM when refreshing. There are no heavy computations or network requests (other than the page refresh itself).',
+      'Yes, completely free! We believe everyone should have equal access to Amazon job opportunities. There are no premium tiers, hidden fees, or credit card requirements.',
   },
   {
-    question: 'Is my data safe?',
+    question: 'How do I unsubscribe?',
     answer:
-      'Absolutely. The extension stores all data locally in your browser using Chrome\'s storage API. No data is sent to any external server. The extension is also open-source so you can inspect the code.',
+      'Every email alert includes a one-click unsubscribe link. You can also email us at any time to be removed from the list. No questions asked.',
   },
   {
-    question: 'How does the sound notification work?',
+    question: 'Can I use this alongside the Chrome extension?',
     answer:
-      'When a new job is detected, the extension plays a pleasant three-tone chime using the Web Audio API. This works even when the tab is in the background. You can toggle sound on/off in settings.',
+      'Absolutely! This service is designed to complement browser-based monitoring. While the extension works when your browser is open, our server-side monitor runs 24/7 — so you get coverage even when your computer is off.',
   },
 ]
 
-function BrowserMockup() {
-  const sampleJobs = [
-    { title: 'Software Development Engineer II', location: 'London, UK', time: '2m ago' },
-    { title: 'Solutions Architect', location: 'Manchester, UK', time: '5m ago' },
-    { title: 'Data Scientist — ML', location: 'Edinburgh, UK', time: '8m ago' },
-  ]
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.7, delay: 0.3 }}
-      className="relative"
-    >
-      {/* Browser chrome */}
-      <div className="rounded-xl border border-neutral-200 bg-white shadow-2xl shadow-black/5 overflow-hidden">
-        {/* Title bar */}
-        <div className="flex items-center gap-2 bg-neutral-100 px-4 py-2.5 border-b border-neutral-200">
-          <div className="flex gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-red-400" />
-            <div className="h-3 w-3 rounded-full bg-yellow-400" />
-            <div className="h-3 w-3 rounded-full bg-green-400" />
-          </div>
-          <div className="flex-1 flex justify-center">
-            <div className="bg-white rounded-md px-3 py-1 text-[10px] text-neutral-400 border border-neutral-200 max-w-[220px] w-full text-center truncate">
-              jobsatamazon.co.uk/app#/jobSearch
-            </div>
-          </div>
-        </div>
-
-        {/* Page content */}
-        <div className="relative bg-neutral-50 p-4 min-h-[200px]">
-          {/* Extension popup overlay */}
-          <div className="absolute right-4 top-4 w-[200px] rounded-lg border border-neutral-200 bg-white shadow-xl shadow-black/10 overflow-hidden z-10">
-            <div className="bg-gradient-to-r from-[#FF9900] to-[#E68A00] px-3 py-2">
-              <div className="text-[10px] font-bold text-white">Amazon Jobs Monitor</div>
-              <div className="text-[8px] text-white/70">● Monitoring</div>
-            </div>
-            <div className="p-2 space-y-1.5">
-              <div className="flex justify-between text-[8px]">
-                <span className="text-neutral-500">New Jobs</span>
-                <span className="font-bold text-[#FF9900]">3</span>
-              </div>
-              {sampleJobs.map((job, i) => (
-                <div key={i} className="p-1.5 bg-[#FFF5E6] rounded text-[7px] leading-tight">
-                  <div className="font-semibold text-neutral-800 truncate">{job.title}</div>
-                  <div className="text-neutral-500">{job.location} · {job.time}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Background job listings */}
-          <div className="space-y-2 max-w-[280px]">
-            <div className="text-xs font-bold text-neutral-400 mb-3">Job Search Results</div>
-            {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="h-10 bg-white rounded-lg border border-neutral-200/80" />
-            ))}
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  )
-}
-
-export default function Home() {
-  const [downloading, setDownloading] = useState(false)
+/* ─── Main Component ─── */
+export default function HomePage() {
   const { toast } = useToast()
+  const [email, setEmail] = useState('')
+  const [heroLoading, setHeroLoading] = useState(false)
+  const [ctaEmail, setCtaEmail] = useState('')
+  const [ctaLoading, setCtaLoading] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [statsLoading, setStatsLoading] = useState(true)
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [jobsLoading, setJobsLoading] = useState(true)
+  const [scanLoading, setScanLoading] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
 
-  const handleDownload = useCallback(async () => {
-    setDownloading(true)
-    try {
-      // Try static file first, then API fallback
-      const urls = [
-        '/download/amazon-jobs-monitor.zip',
-        '/api/download-extension',
-      ]
-      let res: Response | null = null
-      for (const url of urls) {
-        res = await fetch(url)
-        if (res.ok) break
+  const heroRef = useRef<HTMLElement>(null)
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] })
+  const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '30%'])
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0])
+
+  /* ─── Scroll listener for sticky nav ─── */
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  /* ─── Smooth scroll handler ─── */
+  const scrollTo = useCallback((href: string) => {
+    setMobileMenuOpen(false)
+    const el = document.querySelector(href)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [])
+
+  /* ─── Subscribe handler ─── */
+  const handleSubscribe = useCallback(
+    async (emailVal: string, setLoading: (v: boolean) => void, clearEmail: () => void) => {
+      if (!emailVal.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+        toast({ title: 'Invalid email', description: 'Please enter a valid email address.', variant: 'destructive' })
+        return
       }
-      if (!res || !res.ok) throw new Error('Download failed')
-      const blob = await res.blob()
-      const objectUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = objectUrl
-      a.download = 'amazon-jobs-monitor.zip'
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(objectUrl)
-      toast({ title: 'Download started!', description: 'Extract the ZIP, then load the folder in Chrome.' })
+      setLoading(true)
+      try {
+        const res = await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailVal }),
+        })
+        const data = await res.json()
+        if (res.ok) {
+          toast({ title: '🎉 Subscribed!', description: data.message || 'You\'ll receive alerts at ' + emailVal })
+          clearEmail()
+        } else {
+          toast({ title: 'Subscription failed', description: data.error || 'Something went wrong. Please try again.', variant: 'destructive' })
+        }
+      } catch {
+        toast({ title: 'Network error', description: 'Could not reach the server. Please try again later.', variant: 'destructive' })
+      } finally {
+        setLoading(false)
+      }
+    },
+    [toast],
+  )
+
+  /* ─── Fetch stats ─── */
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/stats')
+        if (res.ok) {
+          const data = await res.json()
+          setStats(data)
+        }
+      } catch {
+        // silently fail — stats section shows zeros
+      } finally {
+        setStatsLoading(false)
+      }
+    }
+    fetchStats()
+  }, [])
+
+  /* ─── Fetch recent jobs ─── */
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const res = await fetch('/api/jobs?limit=5&relevant=true')
+        if (res.ok) {
+          const data = await res.json()
+          setJobs(Array.isArray(data) ? data : data.jobs || [])
+        }
+      } catch {
+        // silently fail
+      } finally {
+        setJobsLoading(false)
+      }
+    }
+    fetchJobs()
+  }, [])
+
+  /* ─── Manual scan ─── */
+  const handleManualScan = useCallback(async () => {
+    setScanLoading(true)
+    try {
+      const res = await fetch('/api/scan', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        toast({ title: '✅ Scan triggered', description: data.message || 'Scan completed successfully!' })
+        // Refresh stats
+        const statsRes = await fetch('/api/stats')
+        if (statsRes.ok) setStats(await statsRes.json())
+        const jobsRes = await fetch('/api/jobs?limit=5&relevant=true')
+        if (jobsRes.ok) {
+          const jd = await jobsRes.json()
+          setJobs(Array.isArray(jd) ? jd : jd.jobs || [])
+        }
+      } else {
+        toast({ title: 'Scan failed', description: data.error || 'Could not trigger scan.', variant: 'destructive' })
+      }
     } catch {
-      toast({ title: 'Download failed', description: 'Please try again.', variant: 'destructive' })
+      toast({ title: 'Network error', description: 'Could not reach the server.', variant: 'destructive' })
     } finally {
-      setDownloading(false)
+      setScanLoading(false)
     }
   }, [toast])
 
+  /* ─── Helpers ─── */
+  const formatTimeAgo = useCallback((dateStr: string | null) => {
+    if (!dateStr) return 'Never'
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return 'Just now'
+    if (mins < 60) return `${mins} min ago`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs}h ${mins % 60}m ago`
+    return `${Math.floor(hrs / 24)}d ago`
+  }, [])
+
+  const formatJobTime = useCallback((dateStr: string) => {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) +
+      ' at ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  }, [])
+
+  const statCards = [
+    { label: 'Total Scans', value: stats?.totalScans ?? 0, icon: Clock, color: 'text-orange-400' },
+    { label: 'Jobs Detected', value: stats?.jobsDetected ?? 0, icon: Package, color: 'text-emerald-400' },
+    { label: 'Relevant Jobs', value: stats?.relevantJobs ?? 0, icon: Target, color: 'text-amber-400' },
+    { label: 'Active Subscribers', value: stats?.activeSubscribers ?? 0, icon: Users, color: 'text-sky-400' },
+  ]
+
   return (
-    <div className="min-h-screen flex flex-col bg-white text-neutral-900">
-      {/* ──────────────── STICKY NAV ──────────────── */}
-      <motion.header
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="sticky top-0 z-50 border-b border-neutral-100 bg-white/80 backdrop-blur-md"
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* ═══════════════ NAVIGATION ═══════════════ */}
+      <header
+        className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+          scrolled
+            ? 'bg-white/80 backdrop-blur-xl border-b border-gray-200/60 shadow-sm'
+            : 'bg-transparent'
+        }`}
       >
-        <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FF9900]">
-              <Shield className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-sm font-bold text-neutral-900">Amazon Jobs Monitor</span>
-            <Badge className="bg-[#FFF5E6] text-[#CC7A00] hover:bg-[#FFF5E6] border-[#FFE0B2] text-[10px] font-semibold px-2 py-0">
-              v1.0
-            </Badge>
+        <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          {/* Logo */}
+          <a href="#" className="flex items-center gap-2 group">
+            <span className="text-2xl">📦</span>
+            <span className="text-lg font-bold text-[#FF9900] tracking-tight group-hover:opacity-80 transition-opacity">
+              Amazon Jobs Monitor
+            </span>
+          </a>
+
+          {/* Desktop Links */}
+          <div className="hidden md:flex items-center gap-8">
+            {navLinks.map((link) => (
+              <button
+                key={link.href}
+                onClick={() => scrollTo(link.href)}
+                className="text-sm font-medium text-gray-600 hover:text-[#FF9900] transition-colors"
+              >
+                {link.label}
+              </button>
+            ))}
+            <Button
+              onClick={() => scrollTo('#hero-form')}
+              className="bg-[#FF9900] hover:bg-[#E68A00] text-white font-semibold text-sm px-5"
+            >
+              Subscribe Free
+            </Button>
           </div>
-          <Button
-            onClick={handleDownload}
-            disabled={downloading}
-            className="bg-[#FF9900] text-white hover:bg-[#E68A00] focus-visible:ring-[#FF9900]/30 h-8 gap-1.5 text-xs font-semibold px-3 sm:px-4"
-          >
-            {downloading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Download className="h-3.5 w-3.5" />
-            )}
-            <span className="hidden sm:inline">Download</span>
-          </Button>
+
+          {/* Mobile Menu */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon" aria-label="Open menu">
+                <Menu className="h-5 w-5 text-gray-700" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72">
+              <SheetHeader>
+                <SheetTitle className="text-[#FF9900] flex items-center gap-2">
+                  <span>📦</span> Amazon Jobs Monitor
+                </SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col gap-2 mt-4">
+                {navLinks.map((link) => (
+                  <SheetClose asChild key={link.href}>
+                    <button
+                      onClick={() => scrollTo(link.href)}
+                      className="text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-[#FF9900] transition-colors font-medium"
+                    >
+                      {link.label}
+                    </button>
+                  </SheetClose>
+                ))}
+                <SheetClose asChild>
+                  <Button
+                    onClick={() => scrollTo('#hero-form')}
+                    className="mt-4 bg-[#FF9900] hover:bg-[#E68A00] text-white font-semibold w-full"
+                  >
+                    Subscribe Free
+                  </Button>
+                </SheetClose>
+              </div>
+            </SheetContent>
+          </Sheet>
         </nav>
-      </motion.header>
+      </header>
 
       <main className="flex-1">
-        {/* ──────────────── HERO ──────────────── */}
-        <section className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#FFFAF2] via-white to-white" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#FF9900]/[0.04] rounded-full blur-3xl" />
+        {/* ═══════════════ HERO SECTION ═══════════════ */}
+        <section ref={heroRef} className="relative overflow-hidden bg-white pt-16 pb-20 sm:pt-24 sm:pb-28 lg:pt-32 lg:pb-36">
+          {/* Animated background orbs */}
+          <motion.div
+            style={{ y: heroY }}
+            className="absolute inset-0 pointer-events-none overflow-hidden"
+          >
+            <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-orange-100/60 blur-3xl" />
+            <div className="absolute top-1/3 -left-20 w-64 h-64 rounded-full bg-amber-100/50 blur-3xl" />
+            <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full bg-yellow-50/70 blur-3xl" />
+          </motion.div>
 
-          <div className="relative mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20 lg:py-28">
-            <div className="grid gap-10 lg:grid-cols-2 lg:gap-12 items-center">
-              <div>
-                <motion.div
-                  initial="hidden"
-                  animate="visible"
-                  variants={staggerContainer}
-                  className="flex flex-col gap-5"
+          <motion.div
+            style={{ opacity: heroOpacity }}
+            className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center"
+          >
+            {/* Trust badges */}
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={staggerContainer}
+              className="flex flex-wrap justify-center gap-3 mb-8"
+            >
+              {['🔒 No password needed', '⚡ 5-min scans', '🤖 AI filtering'].map((badge) => (
+                <motion.span
+                  key={badge}
+                  variants={fadeUp}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white/80 backdrop-blur-sm px-4 py-1.5 text-xs font-medium text-gray-600 shadow-sm"
                 >
-                  <motion.div variants={fadeUp} transition={{ delay: 0.1 }}>
-                    <Badge className="bg-[#FFF5E6] text-[#CC7A00] hover:bg-[#FFEDCC] border-[#FFE0B2] text-xs font-semibold px-3 py-1 gap-1.5">
-                      <Zap className="h-3 w-3" />
-                      Free &amp; Open Source
-                    </Badge>
-                  </motion.div>
+                  {badge}
+                </motion.span>
+              ))}
+            </motion.div>
 
-                  <motion.h1
-                    variants={fadeUp}
-                    transition={{ delay: 0.2 }}
-                    className="text-4xl sm:text-5xl lg:text-[3.5rem] font-extrabold tracking-tight text-neutral-900 leading-[1.1]"
-                  >
-                    Never Miss an{' '}
-                    <span className="bg-gradient-to-r from-[#FF9900] to-[#E68A00] bg-clip-text text-transparent">
-                      Amazon Job
-                    </span>
-                  </motion.h1>
+            {/* Heading */}
+            <motion.h1
+              initial="hidden"
+              animate="visible"
+              variants={fadeUp}
+              className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-gray-900 leading-[1.1]"
+            >
+              Never Miss an{' '}
+              <span className="text-[#FF9900]">Amazon UK</span>{' '}
+              Hourly Job Again
+            </motion.h1>
 
-                  <motion.p
-                    variants={fadeUp}
-                    transition={{ delay: 0.3 }}
-                    className="max-w-lg text-base sm:text-lg text-neutral-500 leading-relaxed"
-                  >
-                    Auto-monitor Amazon Jobs pages, get instant sound &amp; desktop alerts when new
-                    positions are posted — all from a lightweight Chrome extension.
-                  </motion.p>
+            {/* Subheading */}
+            <motion.p
+              initial="hidden"
+              animate="visible"
+              variants={{ ...fadeUp, visible: { ...fadeUp.visible, transition: { delay: 0.1 } } }}
+              className="mt-6 max-w-2xl mx-auto text-lg sm:text-xl text-gray-500 leading-relaxed"
+            >
+              AI-powered monitoring scans every 5 minutes. Get instant email alerts for
+              warehouse &amp; fulfillment jobs that don&apos;t need a CV.
+            </motion.p>
 
-                  <motion.div variants={fadeUp} transition={{ delay: 0.4 }} className="flex flex-col sm:flex-row gap-3">
-                    <Button
-                      onClick={handleDownload}
-                      disabled={downloading}
-                      size="lg"
-                      className="bg-[#FF9900] text-white hover:bg-[#E68A00] h-12 text-base font-semibold gap-2.5 px-6 rounded-xl shadow-lg shadow-[#FF9900]/20 hover:shadow-xl hover:shadow-[#FF9900]/25 transition-shadow"
-                    >
-                      {downloading ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <Download className="h-5 w-5" />
-                      )}
-                      Download Extension
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="h-12 text-base font-medium gap-2 px-6 rounded-xl border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
-                      onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-                    >
-                      Learn More
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </motion.div>
-
-                  <motion.div variants={fadeUp} transition={{ delay: 0.5 }} className="flex items-center gap-4 pt-1">
-                    <div className="flex items-center gap-1.5 text-xs text-neutral-400">
-                      <Chrome className="h-3.5 w-3.5" />
-                      <span>Chrome</span>
-                    </div>
-                    <div className="h-3.5 w-px bg-neutral-200" />
-                    <div className="flex items-center gap-1.5 text-xs text-neutral-400">
-                      <Package className="h-3.5 w-3.5" />
-                      <span>No sign-up</span>
-                    </div>
-                    <div className="h-3.5 w-px bg-neutral-200" />
-                    <div className="flex items-center gap-1.5 text-xs text-neutral-400">
-                      <Shield className="h-3.5 w-3.5" />
-                      <span>Privacy-first</span>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              </div>
-
-              <div className="hidden lg:block">
-                <BrowserMockup />
-              </div>
-            </div>
-
-            <div className="lg:hidden mt-10">
-              <BrowserMockup />
-            </div>
-          </div>
+            {/* Email Form */}
+            <motion.div
+              id="hero-form"
+              initial="hidden"
+              animate="visible"
+              variants={{ ...fadeUp, visible: { ...fadeUp.visible, transition: { delay: 0.2 } } }}
+              className="mt-10 max-w-lg mx-auto"
+            >
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSubscribe(email, setHeroLoading, () => setEmail(''))
+                }}
+                className="flex flex-col sm:flex-row gap-3"
+              >
+                <div className="relative flex-1">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="h-13 pl-11 text-base rounded-xl border-gray-300 focus:border-[#FF9900] focus:ring-[#FF9900]/20"
+                    disabled={heroLoading}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={heroLoading}
+                  className="h-13 px-8 bg-[#FF9900] hover:bg-[#E68A00] text-white font-semibold text-base rounded-xl shadow-lg shadow-orange-200/50 hover:shadow-orange-300/60 transition-all"
+                >
+                  {heroLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Subscribing…
+                    </>
+                  ) : (
+                    <>
+                      Subscribe &amp; Monitor
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </form>
+              <p className="mt-3 text-xs text-gray-400">
+                Free forever • No spam • Unsubscribe anytime
+              </p>
+            </motion.div>
+          </motion.div>
         </section>
 
-        {/* ──────────────── FEATURES ──────────────── */}
-        <section className="py-16 sm:py-20 bg-neutral-50/50">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        {/* ═══════════════ HOW IT WORKS ═══════════════ */}
+        <section id="how-it-works" className="bg-[#F5F5F5] py-20 sm:py-28">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-80px' }}
-              variants={staggerContainer}
-              className="text-center mb-12"
+              variants={fadeUp}
+              className="text-center mb-16"
             >
-              <motion.div variants={fadeUp} transition={{ delay: 0.1 }}>
-                <Badge variant="secondary" className="mb-3 bg-[#FFF5E6] text-[#CC7A00] hover:bg-[#FFF5E6] text-xs font-semibold px-3 py-1">
-                  Features
-                </Badge>
-              </motion.div>
-              <motion.h2 variants={fadeUp} transition={{ delay: 0.2 }} className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
-                Everything you need to stay ahead
-              </motion.h2>
-              <motion.p variants={fadeUp} transition={{ delay: 0.3 }} className="mt-3 text-neutral-500 max-w-xl mx-auto">
-                A small but powerful toolkit designed to give you the edge in the competitive Amazon job market.
-              </motion.p>
+              <span className="inline-block text-sm font-semibold text-[#FF9900] tracking-wide uppercase mb-3">
+                How It Works
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+                Three Simple Steps
+              </h2>
+              <p className="mt-4 text-gray-500 max-w-xl mx-auto">
+                No signups, no passwords, no hassle. Just enter your email and let our AI do the work.
+              </p>
             </motion.div>
 
             <motion.div
@@ -426,23 +543,75 @@ export default function Home() {
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
               variants={staggerContainer}
-              className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3"
+              className="relative grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12"
             >
-              {features.map((feature, i) => (
-                <motion.div key={feature.title} variants={fadeUp} transition={{ delay: i * 0.08 }}>
-                  <Card className="group h-full border-neutral-200/80 bg-white hover:shadow-lg hover:shadow-neutral-200/50 hover:border-neutral-300/80 transition-all duration-300 hover:-translate-y-0.5">
-                    <CardHeader className="pb-3">
-                      <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF5E6] text-[#FF9900] group-hover:bg-[#FF9900] group-hover:text-white transition-colors duration-300">
-                        <feature.icon className="h-5 w-5" />
+              {/* Connecting line (desktop) */}
+              <div className="hidden md:block absolute top-16 left-[20%] right-[20%] h-0.5 bg-gradient-to-r from-[#FF9900]/30 via-[#FF9900]/60 to-[#FF9900]/30" />
+
+              {howItWorksSteps.map((step, i) => (
+                <motion.div key={step.number} variants={fadeUp} className="relative text-center">
+                  {/* Step number circle */}
+                  <div className="relative mx-auto mb-6">
+                    <div className="w-32 h-32 rounded-2xl bg-white shadow-lg shadow-gray-200/60 flex items-center justify-center border border-gray-100 mx-auto">
+                      <step.icon className="w-14 h-14 text-[#FF9900]" strokeWidth={1.5} />
+                    </div>
+                    <div className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-[#FF9900] text-white text-sm font-bold flex items-center justify-center shadow-md">
+                      {step.number}
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{step.title}</h3>
+                  <p className="text-gray-500 max-w-xs mx-auto leading-relaxed">{step.description}</p>
+                  {/* Arrow (mobile) */}
+                  {i < howItWorksSteps.length - 1 && (
+                    <div className="md:hidden flex justify-center my-6">
+                      <ArrowRight className="w-6 h-6 text-[#FF9900]/50 rotate-90" />
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ═══════════════ FEATURES GRID ═══════════════ */}
+        <section id="features" className="bg-white py-20 sm:py-28">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
+              variants={fadeUp}
+              className="text-center mb-16"
+            >
+              <span className="inline-block text-sm font-semibold text-[#FF9900] tracking-wide uppercase mb-3">
+                Features
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+                Everything You Need
+              </h2>
+              <p className="mt-4 text-gray-500 max-w-xl mx-auto">
+                Powerful, automated, and privacy-first — built to give you an unfair advantage.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-40px' }}
+              variants={staggerContainer}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {features.map((feature) => (
+                <motion.div key={feature.title} variants={fadeUp}>
+                  <Card className="h-full border border-gray-100 hover:shadow-lg hover:shadow-gray-200/40 transition-all duration-300 hover:-translate-y-0.5 rounded-xl overflow-hidden">
+                    <CardContent className="p-6 flex gap-4">
+                      <div className="shrink-0 w-12 h-12 rounded-xl bg-[#FF9900]/10 flex items-center justify-center">
+                        <feature.icon className="w-6 h-6 text-[#FF9900]" />
                       </div>
-                      <CardTitle className="text-base font-semibold text-neutral-900">
-                        {feature.title}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-sm leading-relaxed text-neutral-500">
-                        {feature.description}
-                      </CardDescription>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-gray-900 mb-1">{feature.title}</h3>
+                        <p className="text-sm text-gray-500 leading-relaxed">{feature.description}</p>
+                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -451,155 +620,206 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ──────────────── HOW IT WORKS ──────────────── */}
-        <section id="how-it-works" className="py-16 sm:py-20">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        {/* ═══════════════ LIVE STATS ═══════════════ */}
+        <section id="stats" className="bg-[#232F3E] py-20 sm:py-28">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-80px' }}
-              variants={staggerContainer}
-              className="text-center mb-12"
+              variants={fadeUp}
+              className="text-center mb-16"
             >
-              <motion.div variants={fadeUp} transition={{ delay: 0.1 }}>
-                <Badge variant="secondary" className="mb-3 bg-[#FFF5E6] text-[#CC7A00] hover:bg-[#FFF5E6] text-xs font-semibold px-3 py-1">
-                  How It Works
-                </Badge>
-              </motion.div>
-              <motion.h2 variants={fadeUp} transition={{ delay: 0.2 }} className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
-                Up and running in under 2 minutes
-              </motion.h2>
-              <motion.p variants={fadeUp} transition={{ delay: 0.3 }} className="mt-3 text-neutral-500 max-w-xl mx-auto">
-                Three simple steps between you and real-time job alerts.
-              </motion.p>
+              <span className="inline-block text-sm font-semibold text-[#FF9900] tracking-wide uppercase mb-3">
+                Live Stats
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white">
+                Real-Time Monitoring Data
+              </h2>
+              <p className="mt-4 text-gray-400 max-w-xl mx-auto">
+                Full transparency — see exactly what our system is doing right now.
+              </p>
             </motion.div>
 
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, margin: '-60px' }}
+              viewport={{ once: true, margin: '-40px' }}
               variants={staggerContainer}
-              className="grid gap-6 sm:gap-8 md:grid-cols-3"
+              className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
             >
-              {steps.map((step) => (
-                <motion.div
-                  key={step.number}
-                  variants={fadeUp}
-                  transition={{ delay: step.number * 0.15 }}
-                  className="relative flex flex-col items-center text-center"
-                >
-                  {step.number < steps.length && (
-                    <div className="hidden md:block absolute top-6 left-[calc(50%+2rem)] right-[calc(-50%+2rem)] h-px border-t-2 border-dashed border-neutral-200" />
-                  )}
-                  <div className="relative mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FF9900] text-white text-lg font-bold shadow-lg shadow-[#FF9900]/20">
-                    {step.number}
-                  </div>
-                  <h3 className="text-base font-semibold text-neutral-900 mb-2">{step.title}</h3>
-                  <p className="text-sm text-neutral-500 leading-relaxed max-w-xs">{step.description}</p>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ──────────────── INSTALLATION GUIDE ──────────────── */}
-        <section className="py-16 sm:py-20 bg-neutral-50/50">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-80px' }}
-              variants={staggerContainer}
-              className="text-center mb-12"
-            >
-              <motion.div variants={fadeUp} transition={{ delay: 0.1 }}>
-                <Badge variant="secondary" className="mb-3 bg-[#FFF5E6] text-[#CC7A00] hover:bg-[#FFF5E6] text-xs font-semibold px-3 py-1">
-                  Installation
-                </Badge>
-              </motion.div>
-              <motion.h2 variants={fadeUp} transition={{ delay: 0.2 }} className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
-                Load the extension in Chrome
-              </motion.h2>
-              <motion.p variants={fadeUp} transition={{ delay: 0.3 }} className="mt-3 text-neutral-500 max-w-xl mx-auto">
-                Follow these steps to install the unpacked extension.
-              </motion.p>
-            </motion.div>
-
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-60px' }}
-              variants={staggerContainer}
-              className="mx-auto max-w-2xl"
-            >
-              <Card className="border-neutral-200/80 overflow-hidden">
-                <CardContent className="p-0">
-                  {installSteps.map((item, i) => (
-                    <motion.div
-                      key={item.step}
-                      variants={fadeUp}
-                      transition={{ delay: i * 0.08 }}
-                      className={`flex gap-4 p-4 sm:p-5 ${
-                        i < installSteps.length - 1 ? 'border-b border-neutral-100' : ''
-                      }`}
-                    >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FF9900]/10 text-[#FF9900] text-sm font-bold">
-                        {item.step}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-neutral-700 leading-relaxed">{item.text}</p>
-                      </div>
-                      {i < installSteps.length - 1 && (
-                        <div className="hidden sm:flex items-center">
-                          <ChevronRight className="h-4 w-4 text-neutral-300" />
+              {statsLoading
+                ? Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+                      <Skeleton className="h-10 w-16 mb-3 bg-white/10" />
+                      <Skeleton className="h-4 w-24 bg-white/10" />
+                    </div>
+                  ))
+                : statCards.map((stat) => (
+                    <motion.div key={stat.label} variants={scaleIn}>
+                      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 text-center hover:bg-white/10 transition-colors">
+                        <stat.icon className={`w-6 h-6 mx-auto mb-3 ${stat.color}`} />
+                        <div className="text-3xl sm:text-4xl font-extrabold text-white mb-1">
+                          {stat.value.toLocaleString()}
                         </div>
-                      )}
+                        <div className="text-sm text-gray-400">{stat.label}</div>
+                      </div>
                     </motion.div>
                   ))}
-                </CardContent>
-              </Card>
+            </motion.div>
+
+            {/* Scan info and manual trigger */}
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={fadeUp}
+              className="mt-10 text-center"
+            >
+              {!statsLoading && stats && (
+                <p className="text-gray-400 text-sm mb-5">
+                  Last scan: {formatTimeAgo(stats.lastScanAt)}
+                  {stats.nextScanIn !== null && stats.nextScanIn > 0
+                    ? ` • Next scan in ${stats.nextScanIn} min`
+                    : ' • Next scan imminent'}
+                </p>
+              )}
+              <Button
+                onClick={handleManualScan}
+                disabled={scanLoading}
+                variant="outline"
+                className="border-white/20 text-white hover:bg-white/10 hover:text-white px-6"
+              >
+                {scanLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Scanning…
+                  </>
+                ) : (
+                  <>
+                    <Zap className="mr-2 h-4 w-4" />
+                    Trigger Manual Scan
+                  </>
+                )}
+              </Button>
             </motion.div>
           </div>
         </section>
 
-        {/* ──────────────── FAQ ──────────────── */}
-        <section className="py-16 sm:py-20">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        {/* ═══════════════ RECENT JOBS ═══════════════ */}
+        <section className="bg-white py-20 sm:py-28">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-80px' }}
-              variants={staggerContainer}
+              variants={fadeUp}
               className="text-center mb-12"
             >
-              <motion.div variants={fadeUp} transition={{ delay: 0.1 }}>
-                <Badge variant="secondary" className="mb-3 bg-[#FFF5E6] text-[#CC7A00] hover:bg-[#FFF5E6] text-xs font-semibold px-3 py-1">
-                  FAQ
-                </Badge>
-              </motion.div>
-              <motion.h2 variants={fadeUp} transition={{ delay: 0.2 }} className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
-                Frequently asked questions
-              </motion.h2>
-              <motion.p variants={fadeUp} transition={{ delay: 0.3 }} className="mt-3 text-neutral-500 max-w-xl mx-auto">
-                Everything you need to know about using the extension.
-              </motion.p>
+              <span className="inline-block text-sm font-semibold text-[#FF9900] tracking-wide uppercase mb-3">
+                Recent Jobs
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+                Latest Relevant Jobs Detected
+              </h2>
             </motion.div>
 
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, margin: '-60px' }}
+              viewport={{ once: true, margin: '-40px' }}
+              variants={fadeIn}
+            >
+              {jobsLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="border border-gray-100 rounded-xl p-4">
+                      <Skeleton className="h-5 w-3/5 mb-2" />
+                      <Skeleton className="h-4 w-2/5" />
+                    </div>
+                  ))}
+                </div>
+              ) : jobs.length > 0 ? (
+                <div className="space-y-3">
+                  {jobs.map((job) => (
+                    <Card key={job.id} className="border border-gray-100 hover:shadow-md transition-shadow rounded-xl">
+                      <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start gap-2">
+                            <Package className="w-5 h-5 text-[#FF9900] shrink-0 mt-0.5" />
+                            <h3 className="font-semibold text-gray-900 truncate">{job.title}</h3>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-500">
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5" />
+                              {job.location}
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5" />
+                              {formatJobTime(job.detectedAt)}
+                            </span>
+                          </div>
+                        </div>
+                        {job.url && (
+                          <a
+                            href={job.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 shrink-0 text-sm font-medium text-[#FF9900] hover:text-[#E68A00] transition-colors"
+                          >
+                            Apply <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 bg-[#F5F5F5] rounded-2xl">
+                  <div className="text-5xl mb-4">🔍</div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                    No jobs detected yet
+                  </h3>
+                  <p className="text-gray-500 max-w-sm mx-auto">
+                    Subscribe to start monitoring — we&apos;ll find relevant hourly jobs for you!
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ═══════════════ FAQ ═══════════════ */}
+        <section id="faq" className="bg-[#F5F5F5] py-20 sm:py-28">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
               variants={fadeUp}
-              transition={{ delay: 0.2 }}
-              className="mx-auto max-w-2xl"
+              className="text-center mb-12"
+            >
+              <span className="inline-block text-sm font-semibold text-[#FF9900] tracking-wide uppercase mb-3">
+                FAQ
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+                Frequently Asked Questions
+              </h2>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-40px' }}
+              variants={fadeIn}
             >
               <Accordion type="single" collapsible className="w-full">
                 {faqs.map((faq, i) => (
-                  <AccordionItem key={i} value={`faq-${i}`} className="border-neutral-200/80">
-                    <AccordionTrigger className="text-left text-sm font-semibold text-neutral-800 hover:no-underline hover:text-[#FF9900] transition-colors py-4">
+                  <AccordionItem key={i} value={`faq-${i}`} className="border-gray-200">
+                    <AccordionTrigger className="text-left text-base font-medium text-gray-900 hover:text-[#FF9900] transition-colors">
                       {faq.question}
                     </AccordionTrigger>
-                    <AccordionContent className="text-sm text-neutral-500 leading-relaxed">
+                    <AccordionContent className="text-gray-500 leading-relaxed">
                       {faq.answer}
                     </AccordionContent>
                   </AccordionItem>
@@ -609,58 +829,90 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ──────────────── CTA BANNER ──────────────── */}
-        <section className="py-16 sm:py-20">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.6 }}
-              className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#FF9900] to-[#E68A00] px-6 py-12 sm:px-12 sm:py-16 text-center"
-            >
-              <div className="absolute -top-20 -right-20 h-60 w-60 rounded-full bg-white/10" />
-              <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-white/5" />
+        {/* ═══════════════ CTA SECTION ═══════════════ */}
+        <section className="relative overflow-hidden py-20 sm:py-24">
+          {/* Gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#FF9900] via-[#FF8800] to-[#E68A00]" />
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA2MCAwIEwgMCAwIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjA4KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-50" />
 
-              <div className="relative z-10">
-                <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                  Start monitoring Amazon Jobs today
-                </h2>
-                <p className="mt-3 text-white/80 max-w-md mx-auto text-sm sm:text-base">
-                  Free, lightweight, and private. Download the extension and never miss a new opportunity again.
-                </p>
-                <Button
-                  onClick={handleDownload}
-                  disabled={downloading}
-                  size="lg"
-                  className="mt-6 h-12 bg-white text-[#CC7A00] hover:bg-neutral-50 text-base font-semibold gap-2 px-6 rounded-xl shadow-lg"
-                >
-                  {downloading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Download className="h-5 w-5" />
-                  )}
-                  Download Extension — It&apos;s Free
-                </Button>
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-60px' }}
+            variants={fadeUp}
+            className="relative mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 text-center"
+          >
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">
+              Start Monitoring Now
+            </h2>
+            <p className="text-white/80 text-lg mb-8 max-w-lg mx-auto">
+              Join hundreds of job seekers who never miss an Amazon UK hourly opportunity.
+            </p>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleSubscribe(ctaEmail, setCtaLoading, () => setCtaEmail(''))
+              }}
+              className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
+            >
+              <div className="relative flex-1">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-white/50" />
+                <Input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={ctaEmail}
+                  onChange={(e) => setCtaEmail(e.target.value)}
+                  required
+                  className="h-12 pl-11 rounded-xl bg-white/15 backdrop-blur-sm border-white/25 text-white placeholder:text-white/50 focus:border-white focus:ring-white/20"
+                  disabled={ctaLoading}
+                />
               </div>
-            </motion.div>
-          </div>
+              <Button
+                type="submit"
+                disabled={ctaLoading}
+                className="h-12 px-7 bg-white text-[#FF9900] hover:bg-gray-50 font-bold rounded-xl shadow-lg transition-all"
+              >
+                {ctaLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Subscribing…
+                  </>
+                ) : (
+                  <>
+                    Subscribe
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </form>
+          </motion.div>
         </section>
       </main>
 
-      {/* ──────────────── FOOTER ──────────────── */}
-      <footer className="mt-auto border-t border-neutral-100 bg-neutral-50/50">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#FF9900]">
-                <Shield className="h-3 w-3 text-white" />
-              </div>
-              <span className="text-sm font-semibold text-neutral-700">Amazon Jobs Monitor</span>
+      {/* ═══════════════ FOOTER ═══════════════ */}
+      <footer className="mt-auto bg-[#232F3E] border-t border-white/5">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+            {/* Logo */}
+            <div className="flex flex-col items-center sm:items-start gap-1">
+              <span className="text-lg font-bold text-[#FF9900] flex items-center gap-2">
+                <span>📦</span> Amazon Jobs Monitor
+              </span>
+              <span className="text-xs text-gray-500">
+                Not affiliated with Amazon.com, Inc.
+              </span>
             </div>
-            <p className="text-xs text-neutral-400">
-              &copy; {new Date().getFullYear()} Amazon Jobs Monitor. Not affiliated with Amazon.
-            </p>
+
+            {/* Links */}
+            <div className="flex items-center gap-6 text-sm text-gray-400">
+              <button className="hover:text-white transition-colors">Privacy</button>
+              <button className="hover:text-white transition-colors">Terms</button>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-white/5 text-center text-xs text-gray-500">
+            &copy; {new Date().getFullYear()} Amazon Jobs Monitor. All rights reserved.
           </div>
         </div>
       </footer>

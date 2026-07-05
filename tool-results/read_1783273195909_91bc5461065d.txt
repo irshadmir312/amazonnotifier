@@ -1,0 +1,669 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback } from 'react'
+     4→import { motion, AnimatePresence } from 'framer-motion'
+     5→import { useToast } from '@/hooks/use-toast'
+     6→import {
+     7→  Card,
+     8→  CardContent,
+     9→  CardDescription,
+    10→  CardHeader,
+    11→  CardTitle,
+    12→} from '@/components/ui/card'
+    13→import { Button } from '@/components/ui/button'
+    14→import { Badge } from '@/components/ui/badge'
+    15→import {
+    16→  Accordion,
+    17→  AccordionContent,
+    18→  AccordionItem,
+    19→  AccordionTrigger,
+    20→} from '@/components/ui/accordion'
+    21→import {
+    22→  Download,
+    23→  RefreshCw,
+    24→  Volume2,
+    25→  Bell,
+    26→  ClipboardList,
+    27→  BrainCircuit,
+    28→  Settings,
+    29→  Shield,
+    30→  Zap,
+    31→  ArrowRight,
+    32→  Chrome,
+    33→  ExternalLink,
+    34→  Package,
+    35→  Loader2,
+    36→  CheckCircle2,
+    37→  MousePointerClick,
+    38→  Eye,
+    39→  Copy,
+    40→  ChevronRight,
+    41→} from 'lucide-react'
+    42→
+    43→const fadeUp = {
+    44→  hidden: { opacity: 0, y: 20 },
+    45→  visible: { opacity: 1, y: 0 },
+    46→}
+    47→
+    48→const staggerContainer = {
+    49→  hidden: {},
+    50→  visible: { transition: { staggerChildren: 0.1 } },
+    51→}
+    52→
+    53→interface Feature {
+    54→  icon: React.ElementType
+    55→  title: string
+    56→  description: string
+    57→}
+    58→
+    59→const features: Feature[] = [
+    60→  {
+    61→    icon: RefreshCw,
+    62→    title: 'Auto Refresh',
+    63→    description:
+    64→      'Automatically refreshes the Amazon Jobs page at a configurable interval (default 30s) so you never have to manually reload.',
+    65→  },
+    66→  {
+    67→    icon: Volume2,
+    68→    title: 'Sound Alerts',
+    69→    description:
+    70→      'Plays a pleasant chime notification the moment a new job is detected, so you can react instantly even when the tab is in the background.',
+    71→  },
+    72→  {
+    73→    icon: Bell,
+    74→    title: 'Desktop Notifications',
+    75→    description:
+    76→      'Sends native system-level notification popups so you are alerted even when Chrome is minimized.',
+    77→  },
+    78→  {
+    79→    icon: ClipboardList,
+    80→    title: 'Job Tracking',
+    81→    description:
+    82→      'Maintains a full log of every newly detected job with title, location, and timestamp.',
+    83→  },
+    84→  {
+    85→    icon: BrainCircuit,
+    86→    title: 'Smart Detection',
+    87→    description:
+    88→      'Intelligently compares page state before and after refresh to identify genuinely new postings.',
+    89→  },
+    90→  {
+    91→    icon: Settings,
+    92→    title: 'Easy Settings',
+    93→    description:
+    94→      'Configure refresh interval, toggle sound/notifications, and manage everything from a clean popup.',
+    95→  },
+    96→]
+    97→
+    98→const steps = [
+    99→  {
+   100→    number: 1,
+   101→    title: 'Download & Install',
+   102→    description:
+   103→      'Click the download button, unzip, and load the extension as an unpacked extension in Chrome.',
+   104→  },
+   105→  {
+   106→    number: 2,
+   107→    title: 'Open Amazon Jobs',
+   108→    description:
+   109→      'Navigate to the Amazon UK jobs page and keep the tab open in the background.',
+   110→  },
+   111→  {
+   112→    number: 3,
+   113→    title: 'Get Notified Instantly',
+   114→    description:
+   115→      'The extension monitors the page every 30 seconds and alerts you with sound + notification.',
+   116→  },
+   117→]
+   118→
+   119→const installSteps = [
+   120→  { step: 1, text: 'Download the extension ZIP file by clicking the button above.' },
+   121→  { step: 2, text: 'Extract the ZIP to a folder on your computer.' },
+   122→  { step: 3, text: 'Open Chrome and navigate to the extensions page.' },
+   123→  {
+   124→    step: 4,
+   125→    text: 'Enable "Developer mode" using the toggle in the top-right corner.',
+   126→  },
+   127→  {
+   128→    step: 5,
+   129→    text: 'Click "Load unpacked" and select the extracted folder.',
+   130→  },
+   131→  {
+   132→    step: 6,
+   133→    text: 'The extension icon appears in your toolbar — click it to start monitoring!',
+   134→  },
+   135→]
+   136→
+   137→const faqs = [
+   138→  {
+   139→    question: 'Does this extension work on Amazon job sites other than the UK?',
+   140→    answer:
+   141→      'Currently, the extension is optimized for jobsatamazon.co.uk. However, the detection logic uses generic heuristics that may work on other Amazon jobs sites. You can try it on any Amazon jobs page.',
+   142→  },
+   143→  {
+   144→    question: 'Will refreshing the page log me out?',
+   145→    answer:
+   146→      'The extension refreshes the tab which may require you to be logged in. Make sure you stay logged in to the Amazon jobs site. Most job search pages do not require authentication.',
+   147→  },
+   148→  {
+   149→    question: 'Can I customize the refresh interval?',
+   150→    answer:
+   151→      'Yes! Open the extension popup, click the settings icon, and choose from 15 seconds, 30 seconds, 1 minute, 2 minutes, or 5 minutes. The default is 30 seconds.',
+   152→  },
+   153→  {
+   154→    question: 'Does it consume a lot of memory or CPU?',
+   155→    answer:
+   156→      'No. The extension is very lightweight — it only runs a simple timer in the background and scrapes the page DOM when refreshing. There are no heavy computations or network requests (other than the page refresh itself).',
+   157→  },
+   158→  {
+   159→    question: 'Is my data safe?',
+   160→    answer:
+   161→      'Absolutely. The extension stores all data locally in your browser using Chrome\'s storage API. No data is sent to any external server. The extension is also open-source so you can inspect the code.',
+   162→  },
+   163→  {
+   164→    question: 'How does the sound notification work?',
+   165→    answer:
+   166→      'When a new job is detected, the extension plays a pleasant three-tone chime using the Web Audio API. This works even when the tab is in the background. You can toggle sound on/off in settings.',
+   167→  },
+   168→]
+   169→
+   170→function BrowserMockup() {
+   171→  const sampleJobs = [
+   172→    { title: 'Software Development Engineer II', location: 'London, UK', time: '2m ago' },
+   173→    { title: 'Solutions Architect', location: 'Manchester, UK', time: '5m ago' },
+   174→    { title: 'Data Scientist — ML', location: 'Edinburgh, UK', time: '8m ago' },
+   175→  ]
+   176→
+   177→  return (
+   178→    <motion.div
+   179→      initial={{ opacity: 0, y: 30 }}
+   180→      animate={{ opacity: 1, y: 0 }}
+   181→      transition={{ duration: 0.7, delay: 0.3 }}
+   182→      className="relative"
+   183→    >
+   184→      {/* Browser chrome */}
+   185→      <div className="rounded-xl border border-neutral-200 bg-white shadow-2xl shadow-black/5 overflow-hidden">
+   186→        {/* Title bar */}
+   187→        <div className="flex items-center gap-2 bg-neutral-100 px-4 py-2.5 border-b border-neutral-200">
+   188→          <div className="flex gap-1.5">
+   189→            <div className="h-3 w-3 rounded-full bg-red-400" />
+   190→            <div className="h-3 w-3 rounded-full bg-yellow-400" />
+   191→            <div className="h-3 w-3 rounded-full bg-green-400" />
+   192→          </div>
+   193→          <div className="flex-1 flex justify-center">
+   194→            <div className="bg-white rounded-md px-3 py-1 text-[10px] text-neutral-400 border border-neutral-200 max-w-[220px] w-full text-center truncate">
+   195→              jobsatamazon.co.uk/app#/jobSearch
+   196→            </div>
+   197→          </div>
+   198→        </div>
+   199→
+   200→        {/* Page content */}
+   201→        <div className="relative bg-neutral-50 p-4 min-h-[200px]">
+   202→          {/* Extension popup overlay */}
+   203→          <div className="absolute right-4 top-4 w-[200px] rounded-lg border border-neutral-200 bg-white shadow-xl shadow-black/10 overflow-hidden z-10">
+   204→            <div className="bg-gradient-to-r from-[#FF9900] to-[#E68A00] px-3 py-2">
+   205→              <div className="text-[10px] font-bold text-white">Amazon Jobs Monitor</div>
+   206→              <div className="text-[8px] text-white/70">● Monitoring</div>
+   207→            </div>
+   208→            <div className="p-2 space-y-1.5">
+   209→              <div className="flex justify-between text-[8px]">
+   210→                <span className="text-neutral-500">New Jobs</span>
+   211→                <span className="font-bold text-[#FF9900]">3</span>
+   212→              </div>
+   213→              {sampleJobs.map((job, i) => (
+   214→                <div key={i} className="p-1.5 bg-[#FFF5E6] rounded text-[7px] leading-tight">
+   215→                  <div className="font-semibold text-neutral-800 truncate">{job.title}</div>
+   216→                  <div className="text-neutral-500">{job.location} · {job.time}</div>
+   217→                </div>
+   218→              ))}
+   219→            </div>
+   220→          </div>
+   221→
+   222→          {/* Background job listings */}
+   223→          <div className="space-y-2 max-w-[280px]">
+   224→            <div className="text-xs font-bold text-neutral-400 mb-3">Job Search Results</div>
+   225→            {[1, 2, 3, 4].map((n) => (
+   226→              <div key={n} className="h-10 bg-white rounded-lg border border-neutral-200/80" />
+   227→            ))}
+   228→          </div>
+   229→        </div>
+   230→      </div>
+   231→    </motion.div>
+   232→  )
+   233→}
+   234→
+   235→export default function Home() {
+   236→  const [downloading, setDownloading] = useState(false)
+   237→  const { toast } = useToast()
+   238→
+   239→  const handleDownload = useCallback(async () => {
+   240→    setDownloading(true)
+   241→    try {
+   242→      // Try static file first, then API fallback
+   243→      const urls = [
+   244→        '/download/amazon-jobs-monitor.zip',
+   245→        '/api/download-extension',
+   246→      ]
+   247→      let res: Response | null = null
+   248→      for (const url of urls) {
+   249→        res = await fetch(url)
+   250→        if (res.ok) break
+   251→      }
+   252→      if (!res || !res.ok) throw new Error('Download failed')
+   253→      const blob = await res.blob()
+   254→      const objectUrl = URL.createObjectURL(blob)
+   255→      const a = document.createElement('a')
+   256→      a.href = objectUrl
+   257→      a.download = 'amazon-jobs-monitor.zip'
+   258→      document.body.appendChild(a)
+   259→      a.click()
+   260→      a.remove()
+   261→      URL.revokeObjectURL(objectUrl)
+   262→      toast({ title: 'Download started!', description: 'Extract the ZIP, then load the folder in Chrome.' })
+   263→    } catch {
+   264→      toast({ title: 'Download failed', description: 'Please try again.', variant: 'destructive' })
+   265→    } finally {
+   266→      setDownloading(false)
+   267→    }
+   268→  }, [toast])
+   269→
+   270→  return (
+   271→    <div className="min-h-screen flex flex-col bg-white text-neutral-900">
+   272→      {/* ──────────────── STICKY NAV ──────────────── */}
+   273→      <motion.header
+   274→        initial={{ opacity: 0, y: -10 }}
+   275→        animate={{ opacity: 1, y: 0 }}
+   276→        transition={{ duration: 0.4 }}
+   277→        className="sticky top-0 z-50 border-b border-neutral-100 bg-white/80 backdrop-blur-md"
+   278→      >
+   279→        <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-3">
+   280→          <div className="flex items-center gap-2.5">
+   281→            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FF9900]">
+   282→              <Shield className="h-4 w-4 text-white" />
+   283→            </div>
+   284→            <span className="text-sm font-bold text-neutral-900">Amazon Jobs Monitor</span>
+   285→            <Badge className="bg-[#FFF5E6] text-[#CC7A00] hover:bg-[#FFF5E6] border-[#FFE0B2] text-[10px] font-semibold px-2 py-0">
+   286→              v1.0
+   287→            </Badge>
+   288→          </div>
+   289→          <Button
+   290→            onClick={handleDownload}
+   291→            disabled={downloading}
+   292→            className="bg-[#FF9900] text-white hover:bg-[#E68A00] focus-visible:ring-[#FF9900]/30 h-8 gap-1.5 text-xs font-semibold px-3 sm:px-4"
+   293→          >
+   294→            {downloading ? (
+   295→              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+   296→            ) : (
+   297→              <Download className="h-3.5 w-3.5" />
+   298→            )}
+   299→            <span className="hidden sm:inline">Download</span>
+   300→          </Button>
+   301→        </nav>
+   302→      </motion.header>
+   303→
+   304→      <main className="flex-1">
+   305→        {/* ──────────────── HERO ──────────────── */}
+   306→        <section className="relative overflow-hidden">
+   307→          <div className="absolute inset-0 bg-gradient-to-b from-[#FFFAF2] via-white to-white" />
+   308→          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#FF9900]/[0.04] rounded-full blur-3xl" />
+   309→
+   310→          <div className="relative mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20 lg:py-28">
+   311→            <div className="grid gap-10 lg:grid-cols-2 lg:gap-12 items-center">
+   312→              <div>
+   313→                <motion.div
+   314→                  initial="hidden"
+   315→                  animate="visible"
+   316→                  variants={staggerContainer}
+   317→                  className="flex flex-col gap-5"
+   318→                >
+   319→                  <motion.div variants={fadeUp} transition={{ delay: 0.1 }}>
+   320→                    <Badge className="bg-[#FFF5E6] text-[#CC7A00] hover:bg-[#FFEDCC] border-[#FFE0B2] text-xs font-semibold px-3 py-1 gap-1.5">
+   321→                      <Zap className="h-3 w-3" />
+   322→                      Free &amp; Open Source
+   323→                    </Badge>
+   324→                  </motion.div>
+   325→
+   326→                  <motion.h1
+   327→                    variants={fadeUp}
+   328→                    transition={{ delay: 0.2 }}
+   329→                    className="text-4xl sm:text-5xl lg:text-[3.5rem] font-extrabold tracking-tight text-neutral-900 leading-[1.1]"
+   330→                  >
+   331→                    Never Miss an{' '}
+   332→                    <span className="bg-gradient-to-r from-[#FF9900] to-[#E68A00] bg-clip-text text-transparent">
+   333→                      Amazon Job
+   334→                    </span>
+   335→                  </motion.h1>
+   336→
+   337→                  <motion.p
+   338→                    variants={fadeUp}
+   339→                    transition={{ delay: 0.3 }}
+   340→                    className="max-w-lg text-base sm:text-lg text-neutral-500 leading-relaxed"
+   341→                  >
+   342→                    Auto-monitor Amazon Jobs pages, get instant sound &amp; desktop alerts when new
+   343→                    positions are posted — all from a lightweight Chrome extension.
+   344→                  </motion.p>
+   345→
+   346→                  <motion.div variants={fadeUp} transition={{ delay: 0.4 }} className="flex flex-col sm:flex-row gap-3">
+   347→                    <Button
+   348→                      onClick={handleDownload}
+   349→                      disabled={downloading}
+   350→                      size="lg"
+   351→                      className="bg-[#FF9900] text-white hover:bg-[#E68A00] h-12 text-base font-semibold gap-2.5 px-6 rounded-xl shadow-lg shadow-[#FF9900]/20 hover:shadow-xl hover:shadow-[#FF9900]/25 transition-shadow"
+   352→                    >
+   353→                      {downloading ? (
+   354→                        <Loader2 className="h-5 w-5 animate-spin" />
+   355→                      ) : (
+   356→                        <Download className="h-5 w-5" />
+   357→                      )}
+   358→                      Download Extension
+   359→                    </Button>
+   360→                    <Button
+   361→                      variant="outline"
+   362→                      size="lg"
+   363→                      className="h-12 text-base font-medium gap-2 px-6 rounded-xl border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
+   364→                      onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+   365→                    >
+   366→                      Learn More
+   367→                      <ArrowRight className="h-4 w-4" />
+   368→                    </Button>
+   369→                  </motion.div>
+   370→
+   371→                  <motion.div variants={fadeUp} transition={{ delay: 0.5 }} className="flex items-center gap-4 pt-1">
+   372→                    <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+   373→                      <Chrome className="h-3.5 w-3.5" />
+   374→                      <span>Chrome</span>
+   375→                    </div>
+   376→                    <div className="h-3.5 w-px bg-neutral-200" />
+   377→                    <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+   378→                      <Package className="h-3.5 w-3.5" />
+   379→                      <span>No sign-up</span>
+   380→                    </div>
+   381→                    <div className="h-3.5 w-px bg-neutral-200" />
+   382→                    <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+   383→                      <Shield className="h-3.5 w-3.5" />
+   384→                      <span>Privacy-first</span>
+   385→                    </div>
+   386→                  </motion.div>
+   387→                </motion.div>
+   388→              </div>
+   389→
+   390→              <div className="hidden lg:block">
+   391→                <BrowserMockup />
+   392→              </div>
+   393→            </div>
+   394→
+   395→            <div className="lg:hidden mt-10">
+   396→              <BrowserMockup />
+   397→            </div>
+   398→          </div>
+   399→        </section>
+   400→
+   401→        {/* ──────────────── FEATURES ──────────────── */}
+   402→        <section className="py-16 sm:py-20 bg-neutral-50/50">
+   403→          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+   404→            <motion.div
+   405→              initial="hidden"
+   406→              whileInView="visible"
+   407→              viewport={{ once: true, margin: '-80px' }}
+   408→              variants={staggerContainer}
+   409→              className="text-center mb-12"
+   410→            >
+   411→              <motion.div variants={fadeUp} transition={{ delay: 0.1 }}>
+   412→                <Badge variant="secondary" className="mb-3 bg-[#FFF5E6] text-[#CC7A00] hover:bg-[#FFF5E6] text-xs font-semibold px-3 py-1">
+   413→                  Features
+   414→                </Badge>
+   415→              </motion.div>
+   416→              <motion.h2 variants={fadeUp} transition={{ delay: 0.2 }} className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
+   417→                Everything you need to stay ahead
+   418→              </motion.h2>
+   419→              <motion.p variants={fadeUp} transition={{ delay: 0.3 }} className="mt-3 text-neutral-500 max-w-xl mx-auto">
+   420→                A small but powerful toolkit designed to give you the edge in the competitive Amazon job market.
+   421→              </motion.p>
+   422→            </motion.div>
+   423→
+   424→            <motion.div
+   425→              initial="hidden"
+   426→              whileInView="visible"
+   427→              viewport={{ once: true, margin: '-60px' }}
+   428→              variants={staggerContainer}
+   429→              className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3"
+   430→            >
+   431→              {features.map((feature, i) => (
+   432→                <motion.div key={feature.title} variants={fadeUp} transition={{ delay: i * 0.08 }}>
+   433→                  <Card className="group h-full border-neutral-200/80 bg-white hover:shadow-lg hover:shadow-neutral-200/50 hover:border-neutral-300/80 transition-all duration-300 hover:-translate-y-0.5">
+   434→                    <CardHeader className="pb-3">
+   435→                      <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF5E6] text-[#FF9900] group-hover:bg-[#FF9900] group-hover:text-white transition-colors duration-300">
+   436→                        <feature.icon className="h-5 w-5" />
+   437→                      </div>
+   438→                      <CardTitle className="text-base font-semibold text-neutral-900">
+   439→                        {feature.title}
+   440→                      </CardTitle>
+   441→                    </CardHeader>
+   442→                    <CardContent>
+   443→                      <CardDescription className="text-sm leading-relaxed text-neutral-500">
+   444→                        {feature.description}
+   445→                      </CardDescription>
+   446→                    </CardContent>
+   447→                  </Card>
+   448→                </motion.div>
+   449→              ))}
+   450→            </motion.div>
+   451→          </div>
+   452→        </section>
+   453→
+   454→        {/* ──────────────── HOW IT WORKS ──────────────── */}
+   455→        <section id="how-it-works" className="py-16 sm:py-20">
+   456→          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+   457→            <motion.div
+   458→              initial="hidden"
+   459→              whileInView="visible"
+   460→              viewport={{ once: true, margin: '-80px' }}
+   461→              variants={staggerContainer}
+   462→              className="text-center mb-12"
+   463→            >
+   464→              <motion.div variants={fadeUp} transition={{ delay: 0.1 }}>
+   465→                <Badge variant="secondary" className="mb-3 bg-[#FFF5E6] text-[#CC7A00] hover:bg-[#FFF5E6] text-xs font-semibold px-3 py-1">
+   466→                  How It Works
+   467→                </Badge>
+   468→              </motion.div>
+   469→              <motion.h2 variants={fadeUp} transition={{ delay: 0.2 }} className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
+   470→                Up and running in under 2 minutes
+   471→              </motion.h2>
+   472→              <motion.p variants={fadeUp} transition={{ delay: 0.3 }} className="mt-3 text-neutral-500 max-w-xl mx-auto">
+   473→                Three simple steps between you and real-time job alerts.
+   474→              </motion.p>
+   475→            </motion.div>
+   476→
+   477→            <motion.div
+   478→              initial="hidden"
+   479→              whileInView="visible"
+   480→              viewport={{ once: true, margin: '-60px' }}
+   481→              variants={staggerContainer}
+   482→              className="grid gap-6 sm:gap-8 md:grid-cols-3"
+   483→            >
+   484→              {steps.map((step) => (
+   485→                <motion.div
+   486→                  key={step.number}
+   487→                  variants={fadeUp}
+   488→                  transition={{ delay: step.number * 0.15 }}
+   489→                  className="relative flex flex-col items-center text-center"
+   490→                >
+   491→                  {step.number < steps.length && (
+   492→                    <div className="hidden md:block absolute top-6 left-[calc(50%+2rem)] right-[calc(-50%+2rem)] h-px border-t-2 border-dashed border-neutral-200" />
+   493→                  )}
+   494→                  <div className="relative mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FF9900] text-white text-lg font-bold shadow-lg shadow-[#FF9900]/20">
+   495→                    {step.number}
+   496→                  </div>
+   497→                  <h3 className="text-base font-semibold text-neutral-900 mb-2">{step.title}</h3>
+   498→                  <p className="text-sm text-neutral-500 leading-relaxed max-w-xs">{step.description}</p>
+   499→                </motion.div>
+   500→              ))}
+   501→            </motion.div>
+   502→          </div>
+   503→        </section>
+   504→
+   505→        {/* ──────────────── INSTALLATION GUIDE ──────────────── */}
+   506→        <section className="py-16 sm:py-20 bg-neutral-50/50">
+   507→          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+   508→            <motion.div
+   509→              initial="hidden"
+   510→              whileInView="visible"
+   511→              viewport={{ once: true, margin: '-80px' }}
+   512→              variants={staggerContainer}
+   513→              className="text-center mb-12"
+   514→            >
+   515→              <motion.div variants={fadeUp} transition={{ delay: 0.1 }}>
+   516→                <Badge variant="secondary" className="mb-3 bg-[#FFF5E6] text-[#CC7A00] hover:bg-[#FFF5E6] text-xs font-semibold px-3 py-1">
+   517→                  Installation
+   518→                </Badge>
+   519→              </motion.div>
+   520→              <motion.h2 variants={fadeUp} transition={{ delay: 0.2 }} className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
+   521→                Load the extension in Chrome
+   522→              </motion.h2>
+   523→              <motion.p variants={fadeUp} transition={{ delay: 0.3 }} className="mt-3 text-neutral-500 max-w-xl mx-auto">
+   524→                Follow these steps to install the unpacked extension.
+   525→              </motion.p>
+   526→            </motion.div>
+   527→
+   528→            <motion.div
+   529→              initial="hidden"
+   530→              whileInView="visible"
+   531→              viewport={{ once: true, margin: '-60px' }}
+   532→              variants={staggerContainer}
+   533→              className="mx-auto max-w-2xl"
+   534→            >
+   535→              <Card className="border-neutral-200/80 overflow-hidden">
+   536→                <CardContent className="p-0">
+   537→                  {installSteps.map((item, i) => (
+   538→                    <motion.div
+   539→                      key={item.step}
+   540→                      variants={fadeUp}
+   541→                      transition={{ delay: i * 0.08 }}
+   542→                      className={`flex gap-4 p-4 sm:p-5 ${
+   543→                        i < installSteps.length - 1 ? 'border-b border-neutral-100' : ''
+   544→                      }`}
+   545→                    >
+   546→                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FF9900]/10 text-[#FF9900] text-sm font-bold">
+   547→                        {item.step}
+   548→                      </div>
+   549→                      <div className="flex-1 min-w-0">
+   550→                        <p className="text-sm text-neutral-700 leading-relaxed">{item.text}</p>
+   551→                      </div>
+   552→                      {i < installSteps.length - 1 && (
+   553→                        <div className="hidden sm:flex items-center">
+   554→                          <ChevronRight className="h-4 w-4 text-neutral-300" />
+   555→                        </div>
+   556→                      )}
+   557→                    </motion.div>
+   558→                  ))}
+   559→                </CardContent>
+   560→              </Card>
+   561→            </motion.div>
+   562→          </div>
+   563→        </section>
+   564→
+   565→        {/* ──────────────── FAQ ──────────────── */}
+   566→        <section className="py-16 sm:py-20">
+   567→          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+   568→            <motion.div
+   569→              initial="hidden"
+   570→              whileInView="visible"
+   571→              viewport={{ once: true, margin: '-80px' }}
+   572→              variants={staggerContainer}
+   573→              className="text-center mb-12"
+   574→            >
+   575→              <motion.div variants={fadeUp} transition={{ delay: 0.1 }}>
+   576→                <Badge variant="secondary" className="mb-3 bg-[#FFF5E6] text-[#CC7A00] hover:bg-[#FFF5E6] text-xs font-semibold px-3 py-1">
+   577→                  FAQ
+   578→                </Badge>
+   579→              </motion.div>
+   580→              <motion.h2 variants={fadeUp} transition={{ delay: 0.2 }} className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
+   581→                Frequently asked questions
+   582→              </motion.h2>
+   583→              <motion.p variants={fadeUp} transition={{ delay: 0.3 }} className="mt-3 text-neutral-500 max-w-xl mx-auto">
+   584→                Everything you need to know about using the extension.
+   585→              </motion.p>
+   586→            </motion.div>
+   587→
+   588→            <motion.div
+   589→              initial="hidden"
+   590→              whileInView="visible"
+   591→              viewport={{ once: true, margin: '-60px' }}
+   592→              variants={fadeUp}
+   593→              transition={{ delay: 0.2 }}
+   594→              className="mx-auto max-w-2xl"
+   595→            >
+   596→              <Accordion type="single" collapsible className="w-full">
+   597→                {faqs.map((faq, i) => (
+   598→                  <AccordionItem key={i} value={`faq-${i}`} className="border-neutral-200/80">
+   599→                    <AccordionTrigger className="text-left text-sm font-semibold text-neutral-800 hover:no-underline hover:text-[#FF9900] transition-colors py-4">
+   600→                      {faq.question}
+   601→                    </AccordionTrigger>
+   602→                    <AccordionContent className="text-sm text-neutral-500 leading-relaxed">
+   603→                      {faq.answer}
+   604→                    </AccordionContent>
+   605→                  </AccordionItem>
+   606→                ))}
+   607→              </Accordion>
+   608→            </motion.div>
+   609→          </div>
+   610→        </section>
+   611→
+   612→        {/* ──────────────── CTA BANNER ──────────────── */}
+   613→        <section className="py-16 sm:py-20">
+   614→          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+   615→            <motion.div
+   616→              initial={{ opacity: 0, y: 20 }}
+   617→              whileInView={{ opacity: 1, y: 0 }}
+   618→              viewport={{ once: true, margin: '-60px' }}
+   619→              transition={{ duration: 0.6 }}
+   620→              className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#FF9900] to-[#E68A00] px-6 py-12 sm:px-12 sm:py-16 text-center"
+   621→            >
+   622→              <div className="absolute -top-20 -right-20 h-60 w-60 rounded-full bg-white/10" />
+   623→              <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-white/5" />
+   624→
+   625→              <div className="relative z-10">
+   626→                <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+   627→                  Start monitoring Amazon Jobs today
+   628→                </h2>
+   629→                <p className="mt-3 text-white/80 max-w-md mx-auto text-sm sm:text-base">
+   630→                  Free, lightweight, and private. Download the extension and never miss a new opportunity again.
+   631→                </p>
+   632→                <Button
+   633→                  onClick={handleDownload}
+   634→                  disabled={downloading}
+   635→                  size="lg"
+   636→                  className="mt-6 h-12 bg-white text-[#CC7A00] hover:bg-neutral-50 text-base font-semibold gap-2 px-6 rounded-xl shadow-lg"
+   637→                >
+   638→                  {downloading ? (
+   639→                    <Loader2 className="h-5 w-5 animate-spin" />
+   640→                  ) : (
+   641→                    <Download className="h-5 w-5" />
+   642→                  )}
+   643→                  Download Extension — It&apos;s Free
+   644→                </Button>
+   645→              </div>
+   646→            </motion.div>
+   647→          </div>
+   648→        </section>
+   649→      </main>
+   650→
+   651→      {/* ──────────────── FOOTER ──────────────── */}
+   652→      <footer className="mt-auto border-t border-neutral-100 bg-neutral-50/50">
+   653→        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
+   654→          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+   655→            <div className="flex items-center gap-2">
+   656→              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#FF9900]">
+   657→                <Shield className="h-3 w-3 text-white" />
+   658→              </div>
+   659→              <span className="text-sm font-semibold text-neutral-700">Amazon Jobs Monitor</span>
+   660→            </div>
+   661→            <p className="text-xs text-neutral-400">
+   662→              &copy; {new Date().getFullYear()} Amazon Jobs Monitor. Not affiliated with Amazon.
+   663→            </p>
+   664→          </div>
+   665→        </div>
+   666→      </footer>
+   667→    </div>
+   668→  )
+   669→}

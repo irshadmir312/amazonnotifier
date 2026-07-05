@@ -14,24 +14,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Z.ai Code Scaffold - AI-Powered Development",
-  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
-  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
-  authors: [{ name: "Z.ai Team" }],
+  title: "Amazon Jobs Monitor — AI-Powered Hourly Job Alerts for Amazon UK",
+  description:
+    "Get instant email alerts when new Amazon UK hourly jobs appear. AI-powered scanning every 5 minutes. No CV required positions. Free forever.",
+  keywords: [
+    "Amazon UK jobs",
+    "hourly jobs Amazon",
+    "warehouse jobs Amazon UK",
+    "Amazon fulfillment jobs",
+    "Amazon jobs no CV",
+    "Amazon jobs monitor",
+    "job alerts",
+  ],
+  authors: [{ name: "Amazon Jobs Monitor" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>",
   },
   openGraph: {
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-    url: "https://chat.z.ai",
-    siteName: "Z.ai",
+    title: "Amazon Jobs Monitor — Never Miss an Hourly Job",
+    description:
+      "AI monitors Amazon UK jobs 24/7. Get email alerts for warehouse & fulfillment hourly positions. No CV needed.",
     type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
   },
 };
 
